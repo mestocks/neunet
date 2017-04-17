@@ -39,7 +39,7 @@
 
 int main(int argc, char **argv)
 {
-  int i, j, l;
+  int h, i, j, l;
 
   int nlayers;
   int *nnodes;
@@ -100,13 +100,15 @@ int main(int argc, char **argv)
     i++;
   }
 
-  i = 0;
+  j = 0;
   curr_layer = head_layer;
   while (curr_layer != NULL) {
-    for (j = 0; j < curr_layer->n_input_weights; j++) {
-      curr_layer->input_weights[j] = wfloats[i];
-      i++;
-    }
+    for (i = 0; i < curr_layer->ninputs; i++) {
+      for (h = 0; h < curr_layer->nhidden; h++) {
+	curr_layer->weights[i][h] = wfloats[j];
+	j++;
+      }
+    }    
     curr_layer = curr_layer->next;
   }
   
@@ -152,8 +154,10 @@ int main(int argc, char **argv)
     
     curr_layer = head_layer;
     while (curr_layer != NULL) {
-      for (i = 0; i < curr_layer->n_input_weights; i++) {
-	printf("%f\n", curr_layer->input_weights[i]);
+      for (i = 0; i < curr_layer->ninputs; i++) {
+	for (h = 0; h < curr_layer->nhidden; h++) {
+	  printf("%f\n", curr_layer->weights[i][h]);
+	}
       }
       curr_layer = curr_layer->next;
     }

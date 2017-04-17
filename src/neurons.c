@@ -3,11 +3,17 @@
 
 void init_layer(struct Layer *layer, int ninputs, int nhidden)
 {
+  int i;
+  
   layer->ninputs = ninputs;
   layer->nhidden = nhidden;
   layer->n_input_weights = ninputs * nhidden;
   
-  layer->input_weights = calloc(layer->n_input_weights, sizeof (double));
+  layer->weights = calloc(layer->ninputs, sizeof (double*));
+  for (i = 0; i < layer->ninputs; i++) {
+    layer->weights[i] = calloc(layer->nhidden, sizeof (double));
+  }
+
   layer->hidden = calloc(layer->nhidden, sizeof (double));
   layer->tmp_h = calloc(layer->nhidden, sizeof (double));
   layer->deltas = calloc(layer->nhidden, sizeof (double));
@@ -19,11 +25,17 @@ void init_layer(struct Layer *layer, int ninputs, int nhidden)
 
 void free_layer(struct Layer *layer)
 {
-  free(layer->input_weights);
+  int i;
+  
   free(layer->hidden);
   free(layer->tmp_h);
   free(layer->deltas);
   free(layer->wdelta_sum);
+
+  for (i = 0; i < layer->ninputs; i++) {
+    free(layer->weights[i]);
+  }
+  free(layer->weights);
 }
 
 

@@ -14,12 +14,6 @@ double dsigmoid(double x)
   return x * (1 - x);
 }
 
-int get_weight_index(struct Layer *layer, int i, int h)
-{
-  // [i1h1, i2h1, i3h1, i1h2, ...]
-  return (h * layer->ninputs) + i;
-}
-
 
 void feed_forward(struct Layer *head_layer, double *inputs, int ninputs)
 {
@@ -34,9 +28,7 @@ void feed_forward(struct Layer *head_layer, double *inputs, int ninputs)
     for (h = 0; h < curr_layer->nhidden; h++) {
       curr_layer->tmp_h[h] = 0.0;
       for (i = 0; i < curr_layer->ninputs; i++) {
-	windex = get_weight_index(curr_layer, i, h);
-	curr_layer->tmp_h[h] += tmp_inputs[i] * curr_layer->input_weights[windex];
-
+	curr_layer->tmp_h[h] += tmp_inputs[i] * curr_layer->weights[i][h];
       }
       curr_layer->hidden[h] = sigmoid(curr_layer->tmp_h[h]);
     }
@@ -62,9 +54,8 @@ void back_propogate(struct Layer *tail_layer, double *inputs, double *targets, d
     tmp_error = targets[h] - curr_layer->hidden[h];
     curr_layer->deltas[h] = tmp_dsig * tmp_error;
     for (i = 0; i < curr_layer->ninputs; i++) {
-      windex = get_weight_index(curr_layer, i, h);
-      curr_layer->input_weights[windex] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
-      curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->input_weights[windex] * curr_layer->deltas[h]);
+      curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
+      curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
     }
     zero_wdelta_sum = 1.0;
   }
@@ -77,9 +68,8 @@ void back_propogate(struct Layer *tail_layer, double *inputs, double *targets, d
       tmp_dsig = dsigmoid(curr_layer->hidden[h]);
       curr_layer->deltas[h] = tmp_dsig * curr_layer->next->wdelta_sum[h];
       for (i = 0; i < curr_layer->ninputs; i++) {
-	windex = get_weight_index(curr_layer, i, h);
-	curr_layer->input_weights[windex] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
-	curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->input_weights[windex] * curr_layer->deltas[h]);
+	curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
+	curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
       }
       zero_wdelta_sum = 1.0;      
     }
@@ -91,9 +81,8 @@ void back_propogate(struct Layer *tail_layer, double *inputs, double *targets, d
     tmp_dsig = dsigmoid(curr_layer->hidden[h]);
     curr_layer->deltas[h] = tmp_dsig * curr_layer->next->wdelta_sum[h];
     for (i = 0; i < curr_layer->ninputs; i++) {
-      windex = get_weight_index(curr_layer, i, h);
-      curr_layer->input_weights[windex] += lrate * curr_layer->deltas[h] * inputs[i];
-      curr_layer->wdelta_sum[i]  = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->input_weights[windex] * curr_layer->deltas[h]);
+      curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * inputs[i];
+      curr_layer->wdelta_sum[i]  = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
     }
     zero_wdelta_sum = 1.0;
   }

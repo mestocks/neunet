@@ -5,8 +5,13 @@ struct Layer {
   int ninputs;
   int nhidden;
   int n_input_weights;
+
+  // ptr->[ptr, ...]
+  //        v
+  //      [double, 
   
-  double *input_weights;
+  double **weights;
+  
   double *hidden;
   double *tmp_h;
   double *deltas;

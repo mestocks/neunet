@@ -18,9 +18,6 @@ void init_layer(struct Layer *layer, int ninputs, int nhidden)
   layer->tmp_h = calloc(layer->nhidden, sizeof (double));
   layer->deltas = calloc(layer->nhidden, sizeof (double));
   layer->wdelta_sum = calloc(layer->ninputs, sizeof (double));
-  
-  layer->next = NULL;
-  layer->prev = NULL;
 }
 
 void free_layer(struct Layer *layer)
@@ -39,14 +36,11 @@ void free_layer(struct Layer *layer)
 }
 
 
-void free_layers(struct Layer *head_layer)
+void free_layers(struct Layer *head_layer, int nlayers)
 {
-  struct Layer *curr_layer;
+  int l;
 
-  while (head_layer != NULL) {
-    curr_layer = head_layer;
-    head_layer = curr_layer->next;
-    free_layer(curr_layer);
-    free(curr_layer);
+  for (l = 0; l < nlayers; l++) {
+    free_layer(&head_layer[l]);
   }
 }

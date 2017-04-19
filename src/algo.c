@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 
 #include <neurons.h>
@@ -15,75 +16,54 @@ double dsigmoid(double x)
 }
 
 
-void feed_forward(struct Layer *head_layer, double *inputs, int ninputs)
+void feed_forward(struct Layer *head_layer, int nlayers, double *inputs, int ninputs)
 {
-  int h, i;
-  int windex;
+  int l, h, i;
   double *tmp_inputs;
-  struct Layer *curr_layer;
 
   tmp_inputs = inputs;
-  curr_layer = head_layer;
-  while (curr_layer != NULL) {
-    for (h = 0; h < curr_layer->nhidden; h++) {
-      curr_layer->tmp_h[h] = 0.0;
-      for (i = 0; i < curr_layer->ninputs; i++) {
-	curr_layer->tmp_h[h] += tmp_inputs[i] * curr_layer->weights[i][h];
+  for (l = 0; l < nlayers; l++) {
+    for (h = 0; h < head_layer[l].nhidden; h++) {
+      head_layer[l].tmp_h[h] = 0.0;
+      for (i = 0; i < head_layer[l].ninputs; i++) {
+	head_layer[l].tmp_h[h] += tmp_inputs[i] * head_layer[l].weights[i][h];
       }
-      curr_layer->hidden[h] = sigmoid(curr_layer->tmp_h[h]);
+      head_layer[l].hidden[h] = sigmoid(head_layer[l].tmp_h[h]);
     }
-    tmp_inputs = &curr_layer->hidden[0];
-    curr_layer = curr_layer->next;
+    tmp_inputs = &head_layer[l].hidden[0];
   }
 }
 
-void back_propogate(struct Layer *tail_layer, double *inputs, double *targets, double lrate)
+void back_propagate(struct Layer *head_layer, int nlayers, double *inputs, double *targets, double lrate)
 {
-  int h, i;
-  int windex;
-  double tmp_dsig;
+  int l, h, i;
+  double delta_lrate;
   double tmp_error;
-  struct Layer *curr_layer;
   
-  curr_layer = tail_layer;
-  double zero_wdelta_sum;
-
-  zero_wdelta_sum = 0.0;
-  for (h = 0; h < curr_layer->nhidden; h++) {
-    tmp_dsig = dsigmoid(curr_layer->hidden[h]);
-    tmp_error = targets[h] - curr_layer->hidden[h];
-    curr_layer->deltas[h] = tmp_dsig * tmp_error;
-    for (i = 0; i < curr_layer->ninputs; i++) {
-      curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
-      curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
-    }
-    zero_wdelta_sum = 1.0;
-  }
-
-  curr_layer = curr_layer->prev;
-
-  while (curr_layer->prev != NULL) {
-    zero_wdelta_sum = 0.0;
-    for (h = 0; h < curr_layer->nhidden; h++) {
-      tmp_dsig = dsigmoid(curr_layer->hidden[h]);
-      curr_layer->deltas[h] = tmp_dsig * curr_layer->next->wdelta_sum[h];
-      for (i = 0; i < curr_layer->ninputs; i++) {
-	curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * curr_layer->prev->hidden[i];
-	curr_layer->wdelta_sum[i] = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
+  for (l = nlayers - 1; l >= 0; l--) {
+    for (h = 0; h < head_layer[l].nhidden; h++) {
+      
+      if (l == nlayers - 1) {
+	tmp_error = targets[h] - head_layer[l].hidden[h];
+	head_layer[l].deltas[h] = head_layer[l].tmp_h[h] * tmp_error;
+      } else {
+	head_layer[l].deltas[h] = head_layer[l].tmp_h[h] * head_layer[l + 1].wdelta_sum[h];
       }
-      zero_wdelta_sum = 1.0;      
+      delta_lrate = lrate * head_layer[l].deltas[h];
+      
+      for (i = 0; i < head_layer[l].ninputs; i++) {
+	if (l == 0) {
+	  head_layer[l].weights[i][h] += delta_lrate * inputs[i];
+	} else {
+	  head_layer[l].weights[i][h] += delta_lrate * head_layer[l - 1].hidden[i];
+	}
+		
+	if (h == 0) {
+	  head_layer[l].wdelta_sum[i] = head_layer[l].weights[i][h] * head_layer[l].deltas[h];
+	} else {
+	  head_layer[l].wdelta_sum[i] = head_layer[l].wdelta_sum[i] + (head_layer[l].weights[i][h] * head_layer[l].deltas[h]);
+	}
+      }
     }
-    curr_layer = curr_layer->prev;
-  }
-    
-  zero_wdelta_sum = 0.0;
-  for (h = 0; h < curr_layer->nhidden; h++) {
-    tmp_dsig = dsigmoid(curr_layer->hidden[h]);
-    curr_layer->deltas[h] = tmp_dsig * curr_layer->next->wdelta_sum[h];
-    for (i = 0; i < curr_layer->ninputs; i++) {
-      curr_layer->weights[i][h] += lrate * curr_layer->deltas[h] * inputs[i];
-      curr_layer->wdelta_sum[i]  = (zero_wdelta_sum * curr_layer->wdelta_sum[i]) + (curr_layer->weights[i][h] * curr_layer->deltas[h]);
-    }
-    zero_wdelta_sum = 1.0;
   }
 }

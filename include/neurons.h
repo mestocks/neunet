@@ -16,13 +16,10 @@ struct Layer {
   double *tmp_h;
   double *deltas;
   double *wdelta_sum;
-  
-  struct Layer *next;
-  struct Layer *prev;
 };
 
 extern void init_layer(struct Layer *layer, int ninputs, int nhidden);
 extern void free_layer(struct Layer *layer);
-extern void free_layers(struct Layer *head_layer);
+extern void free_layers(struct Layer *head_layer, int nlayers);
 
 #endif

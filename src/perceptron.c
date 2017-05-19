@@ -1,4 +1,5 @@
 #include <math.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +10,6 @@
 #include <rwk_parse.h>
 #include <neurons.h>
 #include <algo.h>
-
-#define ARG_NINPUTS 2
-#define ARG_NHIDDEN 3
-#define ARG_WEIGHTS 4
 
 #define ARG_COMMAND 1
 #define ARG_NET_ARCH 2
@@ -44,14 +41,39 @@
  *
  */
 
-void learn(FILE *fp)
+void print_hidden(struct Layer *layer, int nlayers)
 {
-  
+  int l, h;
+  char sep[2];
+
+  sep[0] = '\0';
+  sep[1] = '\0';
+
+  for (l = 0; l < nlayers; l++) {
+    for (h = 0; h < layer[l].nhidden; h++) {
+      printf("%s%f", sep, layer[l].hidden[h]);
+      sep[0] = ' ';
+    }
+  }
+    printf("\n");
 }
 
+void print_weights(struct Layer *layer, int nlayers)
+{
+  int l, h, i;
+  
+  for (l = 0; l < nlayers; l++) {
+    for (i = 0; i < layer[l].ninputs; i++) {
+      for (h = 0; h < layer[l].nhidden; h++) {
+	printf("%f\n", layer[l].weights[i][h]);
+      }
+    }
+  }
+}
+      
 int main(int argc, char **argv)
 {
-  int h, i, j, l;
+  int h, i, j, l, r;
 
   int nlayers;
   int *nnodes;
@@ -110,7 +132,6 @@ int main(int argc, char **argv)
       }
     }
   }
-  
   free(warray);
   free(wfloats);
 
@@ -124,6 +145,8 @@ int main(int argc, char **argv)
     char **array;
     char buffer[1280000];
     char delim = ' ';
+
+    inputs = calloc(nnodes[0], sizeof (double));
     
     array = calloc(nnodes[0], sizeof (char *));
     while (fgets(buffer, sizeof(buffer), fp)) {
@@ -140,6 +163,7 @@ int main(int argc, char **argv)
       printf("\n");
     }
     free(array);
+    free(inputs);
     fclose(fp);
     
   } else if (strcmp(argv[ARG_COMMAND], "learn") == 0) {
@@ -166,8 +190,8 @@ int main(int argc, char **argv)
       int ndoubles;
 
       nrows = 60000;
-      ndoubles = nnodes[0] + nnodes[nlayers - 1];
-
+      ndoubles = nnodes[0] + nnodes[nlayers];
+      
       double *training_mem;
       double **training_array;
 
@@ -197,20 +221,81 @@ int main(int argc, char **argv)
       fclose(fp);
       free(buffer);
 
-      for (h = 0; h < nrows; h++) {
-	inputs = &training_array[h][0];
-	targets = &training_array[h][nnodes[0]];
-	feed_forward(head_layer, nlayers, inputs, nnodes[0]);
-	back_propagate(head_layer, nlayers, inputs, targets, 0.1);
-      }
+      int last;
+      double error;
+      double rec_last;
+      double diff;
+
+      last = nlayers - 1;
 
       for (l = 0; l < nlayers; l++) {
-	for (i = 0; i < head_layer[l].ninputs; i++) {
-	  for (h = 0; h < head_layer[l].nhidden; h++) {
-	    printf("%f\n", head_layer[l].weights[i][h]);
-	  }
+	for (h = 0; h < head_layer[l].nhidden; h++) {
+	  head_layer[l].deltas[h] = 0.0;
 	}
       }
+
+      double lrate;
+      double bdelta;
+      double brate;
+      int batch_size;
+      double batch_mean;
+      batch_size = 10;
+      batch_mean = 1 / (double)batch_size;
+      
+      lrate = 3.0;
+      brate = batch_mean * lrate;
+      
+      int rnd;
+      srand(time(NULL));
+
+      int niter;
+      niter = nrows;
+      //niter = 3000;
+      
+      for (r = 0; r < niter; r++) {
+	rnd = randint(nrows - 1);
+	
+	inputs = &training_array[rnd][0];
+	targets = &training_array[rnd][nnodes[0]];
+	
+	feed_forward(head_layer, nlayers, inputs, nnodes[0]);
+	
+	deltas(head_layer, nlayers, inputs, targets);
+	if ((r + 1) % batch_size == 0) {
+
+	  fprintf(stderr, "%d %d", r, rnd);
+	  for (h = 0; h < head_layer[last].nhidden; h++) {
+	    diff = targets[h] - head_layer[last].hidden[h];
+	    fprintf(stderr, " %f", diff * diff);
+	  }
+
+	  /*
+	   *
+	   * [   ]   [ ]
+	   * [   ] * [ ] * [   ]
+	   * [   ]   [ ]
+	   *
+	   */
+
+	  for (l = nlayers - 1; l >= 0; l--) {
+	    for (h = 0; h < head_layer[l].nhidden; h++) {
+	      bdelta = brate * head_layer[l].deltas[h];
+	      for (i = 0; i < head_layer[l].ninputs; i++) {
+		if (l == 0) {
+		  head_layer[l].weights[i][h] += bdelta * inputs[i];
+		} else {
+		  head_layer[l].weights[i][h] += bdelta * head_layer[l - 1].hidden[i];
+		}
+	      }
+	      head_layer[l].deltas[h] = 0.0;
+	    }
+	  }
+
+	  fprintf(stderr, "\n");
+	}
+      }
+
+      print_weights(head_layer, nlayers);
       
       free(training_mem);
       free(training_array);
@@ -224,11 +309,11 @@ int main(int argc, char **argv)
       char delim = ' ';
 
       inputs = calloc(nnodes[0], sizeof (double));
-      targets = calloc(nnodes[2], sizeof (double));
+      targets = calloc(nnodes[nlayers], sizeof (double));
       
-      array = calloc(nnodes[0] + nnodes[nlayers - 1], sizeof (char *));
+      array = calloc(nnodes[0] + nnodes[nlayers], sizeof (char *));
       while (fgets(buffer, sizeof(buffer), fp)) {
-	rwk_str2array(array, buffer, nnodes[0] + nnodes[nlayers - 1], &delim);
+	rwk_str2array(array, buffer, nnodes[0] + nnodes[nlayers], &delim);
 	for (i = 0; i < nnodes[0]; i++) {
 	  inputs[i] = atof(array[i]);
 	}
@@ -237,15 +322,10 @@ int main(int argc, char **argv)
 	}
 	feed_forward(head_layer, nlayers, &inputs[0], nnodes[0]);
 	back_propagate(head_layer, nlayers, &inputs[0], &targets[0], 0.1);
-      } 
-
-      for (l = 0; l < nlayers; l++) {
-	for (i = 0; i < head_layer[l].ninputs; i++) {
-	  for (h = 0; h < head_layer[l].nhidden; h++) {
-	    printf("%f\n", head_layer[l].weights[i][h]);
-	  }
-	}
       }
+
+      print_weights(head_layer, nlayers);
+      
       free(inputs);
       free(targets);
     }

@@ -6,6 +6,7 @@ PREFIX = $(HOME).local/
 
 bin = bin/
 inc = include/
+misc = misc/
 src = src/
 
 Wgcc = -Wall -Wextra -Wpedantic
@@ -34,7 +35,13 @@ $(bin)%:	$(src)main.c $(src)nn_algo.c $(src)nn_objects.c
 	gcc $(INC) $(LIB) $(Wgcc) -o $@ $^ $(SLIB)
 
 
+###
 
+.PHONY:	test
+test:	$(misc)profile
+
+$(misc)%:	$(misc)%.c $(src)nn_algo.c $(src)nn_objects.c
+	gcc $(INC) $(LIB) $(Wgcc) -o $@ $^ $(SLIB)
 
 
 

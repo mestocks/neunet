@@ -1,11 +1,14 @@
+#include <math.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <unistd.h>
 #include <sys/stat.h>
 
 #include <rwk_parse.h>
+#include <rwk_htable.h>
 
 #include <lar_objects.h>
 #include <lar_init.h>
@@ -13,30 +16,104 @@
 #include <nn_objects.h>
 #include <nn_algo.h>
 
-// artnet learn <arch> <bsize> <nepochs>
-// artnet learn 2,3,1 20 1000
+// synapse learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
+
+// synapse learn 2,3,1 --weights=init.wts training_data.txt
 
 #define ARG_COMM 1
 #define ARG_ARCH 2
-#define ARG_BSIZE 3
-#define ARG_NEPOCHS 4
-#define ARG_WFILE 5
-#define ARG_FILE 6
+#define ARG_DEFS "synapse <cmd> <arch> --weights=r0,1 --nepochs=1"
 
-void nn_learn(char *fname, struct NeuralNetwork *nnet, struct lar_matrix *y)
+void print_output(struct NeuralNetwork *nnet)
 {
-  int h, i, j;
+  lar_printf(" ", "\n", nnet->layers[nnet->nlayers - 1]);
+}
+
+void print_weights(struct NeuralNetwork *nnet)
+{
+  int l;
   
+  for (l = 0; l < nnet->nlayers - 1; l++) {
+    lar_printf("\n", "\n", nnet->bias_wts[l]);
+    lar_printf("\n", "\n", nnet->weights[l]);
+  }  
+}
+
+double r_urange(double min, double max)
+{
+  double range, div;
+
+  range = (max - min);
+  div = RAND_MAX / range;
+  return min + (rand() / div);
+}
+
+void load_weights(char *fname, struct NeuralNetwork *nnet)
+{
+  int i, j, l;
+  
+  if (strcmp(fname, "r0,1") == 0) {
+    srand(time(NULL));
+    double min, max, scalar;
+    for (l = 0; l < nnet->nlayers - 1; l++) {
+      scalar = sqrt(nnet->layers[l]->nrows + 1);
+      min = -1 / scalar;
+      max = 1 / scalar;
+      for (i = 0; i < nnet->weights[l]->nrows; i++) {
+	for (j = 0; j < nnet->weights[l]->ncols; j++) {
+	  *nnet->weights[l]->v[i][j] = r_urange(min, max);
+	}
+      }
+      for (i = 0; i < nnet->bias_wts[l]->nrows; i++) {
+	for (j = 0; j < nnet->bias_wts[l]->ncols; j++) {
+	  *nnet->bias_wts[l]->v[i][j] = r_urange(min, max);
+	}
+      }
+    }
+  } else {
+    FILE *fp;
+    char **array;
+    char delim = ' ';
+    char buffer[1028];
+    int b;
+    
+    b = i = j = l = 0;
+    fp = fopen(fname, "r");
+    array = calloc(1, sizeof (char*));
+    while (fgets(buffer, sizeof(buffer), fp)) {
+      rwk_str2array(array, buffer, 1, &delim);
+      if (b < nnet->bias_wts[l]->nrows) {
+	*(nnet->bias_wts[l])->v[b][0] = atof(array[0]);
+	b++;
+      } else {
+	*(nnet->weights[l])->v[i][j] = atof(array[0]);
+	j++;
+      }
+      if (j == nnet->weights[l]->ncols) {
+	j = 0;
+	i++;
+	if (i == nnet->weights[l]->nrows) {
+	  i = 0;
+	  b = 0;
+	  l++;
+      }
+      }
+    }
+    free(array);
+    fclose(fp);  
+  }
+}
+
+void nn_learn(FILE *fp, struct NeuralNetwork *nnet, struct lar_matrix *y)
+{
+  int h, i, j;  
   long size;
   struct stat st;
   int buffer_size;
   
-  stat(fname, &st);
+  fstat(fileno(fp), &st);
   size = st.st_size;
   buffer_size = 2048 * ((size / 2048) + 1);
-  
-  FILE *fp;
-  fp = fopen(fname, "r");
   
   char *buffer;
   char delim = ' ';
@@ -45,6 +122,9 @@ void nn_learn(char *fname, struct NeuralNetwork *nnet, struct lar_matrix *y)
   fread(buffer, 1, size, fp);
   
   char *tmp;
+
+  
+  
   tmp = buffer;
   i = j = 0;
   for (h = 0; h < buffer_size; h++) {
@@ -59,6 +139,7 @@ void nn_learn(char *fname, struct NeuralNetwork *nnet, struct lar_matrix *y)
       
       nn_feed_forward(nnet);
       nn_back_propagation(nnet, y);
+      nn_update_weights(nnet);
       
       tmp = &buffer[h + 1];
       i++;
@@ -74,15 +155,118 @@ void nn_learn(char *fname, struct NeuralNetwork *nnet, struct lar_matrix *y)
       j++;
     }
   }
+
+
   
   free(buffer);
-  fclose(fp);
 }
 
 
+void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
+{
+  int i;
+  char **array;
+  char delim = ' ';
+  char buffer[5120];
+  
+  array = calloc(nnet->ninputs, sizeof (char*));
+  while (fgets(buffer, sizeof(buffer), fp)) {
+    rwk_str2array(array, buffer, nnet->ninputs, &delim);
+    
+    for (i = 0; i < nnet->ninputs; i++) {
+      *(nnet->layers[0])->v[i][0] = atof(array[i]);
+    }
+    nn_feed_forward(nnet);
+    print_output(nnet);
+  }
+  free(array);  
+}
+
+
+void args2hash(struct rwkHashTable *hash, int argc_wo_fname, char **argv)
+{
+  int c;
+  int ddash;
+  char *tmp;
+  char *key;
+  char *value;
+  
+  c = 3;
+  while (c < argc_wo_fname) {
+    if (argv[c][0] == '-' && argv[c][1] == '-') {
+      ddash = 0;
+      tmp = &argv[c][0];
+      while (*tmp) {
+	if (*tmp == '=') {
+	  *tmp = '\0';
+	  key = malloc(128 * sizeof (char));
+	  value = malloc(128 * sizeof (char));
+	  strcpy(key, argv[c]);
+	  strcpy(value, tmp + 1);
+	  rwk_insert_hash(hash, key, value);
+	  ddash = 1;
+	}
+	tmp++;
+      }
+      if (ddash == 0) {
+	key = malloc(128 * sizeof (char));
+	value = malloc(128 * sizeof (char));
+	strcpy(key, argv[c]);
+	value[0] = '1';
+	value[1] = '\0';
+	rwk_insert_hash(hash, key, value);
+      }
+      c++;
+    } else {
+      if (c >= argc_wo_fname - 1 || *argv[c+1] == '-') {
+	key = malloc(128 * sizeof (char));
+	value = malloc(128 * sizeof (char));
+	strcpy(key, argv[c]);
+	value[0] = '1';
+	value[1] = '\0';
+	rwk_insert_hash(hash, key, value);
+	c++;
+      } else {
+	key = malloc(128 * sizeof (char));
+	value = malloc(128 * sizeof (char));
+	strcpy(key, argv[c]);
+	strcpy(value, argv[c + 1]);
+	rwk_insert_hash(hash, key, value);
+	c+=2;
+      }
+    }
+  }
+}
+
 int main(int argc, char **argv)
 {
-  int b, h, i, j, l;
+  struct rwkHashTable arghash;
+  rwk_create_hash(&arghash, 128);
+
+  FILE *fp;
+  int argc_wo_fname;
+  
+  if (access(argv[argc - 1], F_OK) != -1) {
+    fp = fopen(argv[argc - 1], "r");
+    argc_wo_fname = argc - 1;
+  } else {
+    fp = stdin;
+    argc_wo_fname = argc;
+  }
+  
+  int defc;
+  char **defv;
+  char defaults[128];
+
+  sprintf(defaults, ARG_DEFS);
+  defc = rwk_countcols(defaults, " ");
+  defv = calloc(defc, sizeof(char *));
+  rwk_str2array(defv, defaults, defc, " ");
+  
+  args2hash(&arghash, defc, defv);
+  args2hash(&arghash, argc_wo_fname, argv);
+  
+  int i;
   int nlayers;
   char net_delim = ',';
   nlayers = rwk_countcols(argv[ARG_ARCH], &net_delim);
@@ -97,95 +281,32 @@ int main(int argc, char **argv)
   }
   free(net_array);
 
-  int bsize;
   int nepochs;
-  bsize = atoi(argv[ARG_BSIZE]);
-  nepochs = atoi(argv[ARG_NEPOCHS]);
+  nepochs = atoi((char *)rwk_lookup_hash(&arghash, "--nepochs"));
 
   struct lar_matrix y;
   struct NeuralNetwork nnet;
   create_network(&nnet, nlayers, &nnodes[0]);
   lar_create_matrix(&y, nnodes[nlayers - 1], 1);
-
-  FILE *wfp;
-  char **warray;
-  char wdelim = ' ';
-  char wbuffer[1028];
-  b = i = j = l = 0;
-  wfp = fopen(argv[ARG_WFILE], "r");
-  warray = calloc(1, sizeof (char*));
-  while (fgets(wbuffer, sizeof(wbuffer), wfp)) {
-    rwk_str2array(warray, wbuffer, 1, &wdelim);
-    if (b < nnet.bias_wts[l]->nrows) {
-      *(nnet.bias_wts[l])->v[b][0] = atof(warray[0]);
-      b++;
-    } else {
-      *(nnet.weights[l])->v[i][j] = atof(warray[0]);
-      j++;
-    }
-    if (j == nnet.weights[l]->ncols) {
-      j = 0;
-      i++;
-      if (i == nnet.weights[l]->nrows) {
-	i = 0;
-	b = 0;
-	l++;
-      }
-    }
-  }
-  free(warray);
-  fclose(wfp);
-
-
-  FILE *fp;
-  char **array;
-  char delim = ' ';
-  char buffer[5120];
-
-  fp = stdin;
+  
+  load_weights((char *)rwk_lookup_hash(&arghash, "--weights"), &nnet);
+  
   if (strcmp(argv[ARG_COMM], "solve") == 0) {
-    array = calloc(nnet.ninputs, sizeof (char*));
-    while (fgets(buffer, sizeof(buffer), fp)) {
-      rwk_str2array(array, buffer, nnet.ninputs, &delim);
-      
-      for (i = 0; i < nnet.ninputs; i++) {
-	*(nnet.layers[0])->v[i][0] = atof(array[i]);
-      }
-      nn_feed_forward(&nnet);
-      printf("%f", *(nnet.layers[nlayers - 1])->v[0][0]);
-      for (i = 1; i < nnet.noutputs; i++) {
-	printf(" %f", *(nnet.layers[nlayers - 1])->v[i][0]);
-      }
-      printf("\n");
-    }
-    free(array);
+    nn_solve(fp, &nnet);
   } else if (strcmp(argv[ARG_COMM], "learn") == 0) {
-
-    nn_learn(argv[ARG_FILE], &nnet, &y);
-    
-    for (l = 0; l < nnet.nlayers - 1; l++) {
-
-      for (i = 0; i < nnet.bias_wts[l]->nrows; i++) {
-	for (j = 0; j < nnet.bias_wts[l]->ncols; j++) {
-	  printf("%f\n", *nnet.bias_wts[l]->v[i][j]);
-	}
-      }
-      
-      for (i = 0; i < nnet.weights[l]->nrows; i++) {
-	for (j = 0; j < nnet.weights[l]->ncols; j++) {
-	  printf("%f\n", *nnet.weights[l]->v[i][j]);
-	}
-      }
+    for (i = 0; i < nepochs; i++) {
+      nn_learn(fp, &nnet, &y);
     }
-    
+    print_weights(&nnet);
   } else {
     printf("help\n");
   }
-
   
   lar_free_matrix(&y);
   free_network(&nnet);
   free(nnodes);
+  rwk_free_hash(&arghash);
+  fclose(fp);
   
   return 0;
 }

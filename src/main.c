@@ -167,7 +167,7 @@ void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
   int i;
   char **array;
   char delim = ' ';
-  char buffer[5120];
+  char buffer[51200];
   
   array = calloc(nnet->ninputs, sizeof (char*));
   while (fgets(buffer, sizeof(buffer), fp)) {

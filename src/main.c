@@ -17,8 +17,7 @@
 #include <nn_algo.h>
 
 // synapse learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
-
-// synapse learn 2,3,1 --weights=init.wts training_data.txt
+// synapse solve <arch> [--weights=r0,1] [file.test]
 
 #define ARG_COMM 1
 #define ARG_ARCH 2
@@ -26,7 +25,7 @@
 
 void print_output(struct NeuralNetwork *nnet)
 {
-  lar_printf(" ", "\n", nnet->layers[nnet->nlayers - 1]);
+  lar_printf(" ", "\n", nnet->layers[nnet->nlayers - 1]->T);
 }
 
 void print_weights(struct NeuralNetwork *nnet)

@@ -103,61 +103,98 @@ void load_weights(char *fname, struct NeuralNetwork *nnet)
   }
 }
 
-void nn_learn(FILE *fp, struct NeuralNetwork *nnet, struct lar_matrix *y)
+struct TrainingData {
+  int nobs;
+  int ninputs;
+  int noutputs;
+  double **inputs;
+  double **outputs;
+};
+
+void file2array(struct TrainingData *trdata, FILE *fp, int ninputs, int noutputs, char *delim)
 {
-  int h, i, j;  
+  int h, i, j, n;  
   long size;
+  char *tmp;
+  char *last;
+  char *buffer;
   struct stat st;
   int buffer_size;
   
   fstat(fileno(fp), &st);
   size = st.st_size;
   buffer_size = 2048 * ((size / 2048) + 1);
-  
-  char *buffer;
-  char delim = ' ';
-  
   buffer = calloc(buffer_size, sizeof (char));
   fread(buffer, 1, size, fp);
-  
-  char *tmp;
 
-  
-  
+  n = 0;
   tmp = buffer;
+  while (*tmp) {
+    if (*tmp == '\n') {
+      n++;
+    }
+    tmp++;
+  }
+  trdata->nobs = n;
+  trdata->ninputs = ninputs;
+  trdata->noutputs = noutputs;
+  trdata->inputs = calloc(trdata->nobs, sizeof (double *));
+  trdata->outputs = calloc(trdata->nobs, sizeof (double *));
+
+  for (n = 0; n < trdata->nobs; n++) {
+    trdata->inputs[n] = calloc(trdata->ninputs, sizeof (double));
+    trdata->outputs[n] = calloc(trdata->noutputs, sizeof (double));
+  }
+  
   i = j = 0;
-  for (h = 0; h < buffer_size; h++) {
-    if (buffer[h] == '\n') {
-      buffer[h] = '\0';
-      
-      if (j < nnet->ninputs) {
-	*(nnet->layers[0]->v[j][0]) = atof(tmp);
+  last = tmp = buffer;
+  while (*tmp) {
+    if (*tmp == ' ') {
+      *tmp = '\0';
+      if (j < trdata->ninputs) {
+	trdata->inputs[i][j] = atof(last);
       } else {
-	*y->v[j - nnet->ninputs][0] = atof(tmp);
+	trdata->outputs[i][j - trdata->ninputs] = atof(last);
       }
-      
-      nn_feed_forward(nnet);
-      nn_back_propagation(nnet, y);
-      nn_update_weights(nnet);
-      
-      tmp = &buffer[h + 1];
-      i++;
-      j = 0;
-    } else if (buffer[h] == delim) {
-      buffer[h] = '\0';
-      if (j < nnet->ninputs) {
-	*(nnet->layers[0]->v[j][0]) = atof(tmp);
-      } else {
-	*y->v[j - nnet->ninputs][0] = atof(tmp);
-      }
-      tmp = &buffer[h + 1];
       j++;
+      tmp++;
+      last = tmp;
+    } else if (*tmp == '\n') {
+      *tmp = '\0';
+      if (j < trdata->ninputs) {
+	trdata->inputs[i][j] = atof(last);
+      } else {
+	trdata->outputs[i][j - trdata->ninputs] = atof(last);
+      }
+      j = 0;
+      i++;
+      tmp++;
+      last = tmp;
+    } else {
+      tmp++;
     }
   }
-
-
-  
   free(buffer);
+}
+
+
+void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y)
+{
+  int i, j;
+  
+  i = j = 0;
+  for (i = 0; i < trdata->nobs; i++) {
+    for (j = 0; j < trdata->ninputs; j++) {
+      *(nnet->layers[0]->v[j][0]) = trdata->inputs[i][j];
+    }
+    for (j = 0; j < trdata->noutputs; j++) {
+      *y->v[j][0] = trdata->outputs[i][j];
+    }
+    
+    nn_feed_forward(nnet);
+    nn_back_propagation(nnet, y);
+    nn_update_weights(nnet);
+  }
 }
 
 
@@ -279,7 +316,7 @@ int main(int argc, char **argv)
     nnodes[i] = atoi(net_array[i]);
   }
   free(net_array);
-
+  
   int nepochs;
   nepochs = atoi((char *)rwk_lookup_hash(&arghash, "--nepochs"));
 
@@ -287,16 +324,29 @@ int main(int argc, char **argv)
   struct NeuralNetwork nnet;
   create_network(&nnet, nlayers, &nnodes[0]);
   lar_create_matrix(&y, nnodes[nlayers - 1], 1);
+  int n;
+  char delim = ' ';
   
   load_weights((char *)rwk_lookup_hash(&arghash, "--weights"), &nnet);
   
   if (strcmp(argv[ARG_COMM], "solve") == 0) {
     nn_solve(fp, &nnet);
   } else if (strcmp(argv[ARG_COMM], "learn") == 0) {
+    struct TrainingData trdata;
+    
+    file2array(&trdata, fp, nnet.ninputs, nnet.noutputs, &delim);
     for (i = 0; i < nepochs; i++) {
-      nn_learn(fp, &nnet, &y);
+      nn_learn(&trdata, &nnet, &y);
     }
     print_weights(&nnet);
+    
+    for (n = 0; n < trdata.nobs; n++) {
+      free(trdata.inputs[n]);
+      free(trdata.outputs[n]);
+    }
+    free(trdata.inputs);
+    free(trdata.outputs);
+    
   } else {
     printf("help\n");
   }

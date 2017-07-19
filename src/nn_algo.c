@@ -21,7 +21,7 @@ void nn_feed_forward(struct NeuralNetwork *nnet)
   struct lar_matrix *a;
   struct lar_matrix *b;
   struct lar_matrix *W;
-
+  
   nlayers = nnet->nlayers;
   for (l = 0; l < nlayers - 1; l++) {
     x = nnet->layers[l];

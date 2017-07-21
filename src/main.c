@@ -336,6 +336,7 @@ int main(int argc, char **argv)
     
     file2array(&trdata, fp, nnet.ninputs, nnet.noutputs, &delim);
     for (i = 0; i < nepochs; i++) {
+      fprintf(stderr, "%d\n", i);
       nn_learn(&trdata, &nnet, &y);
     }
     print_weights(&nnet);

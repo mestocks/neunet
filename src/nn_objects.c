@@ -26,8 +26,8 @@ void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)
   nnet->bias_wts = calloc(nlayers - 1, sizeof (struct lar_matrix *));
 
   for (i = 0; i < nlayers; i++) {
-    nnet->layers[i] = calloc(1, sizeof (struct lar_matrix));
-    lar_create_matrix(nnet->layers[i], nnodes[i], 1);
+      nnet->layers[i] = calloc(1, sizeof (struct lar_matrix));
+      lar_create_matrix(nnet->layers[i], nnodes[i], 1);
     if (i < nlayers - 1) {
       nnet->deltas[i] = calloc(1, sizeof (struct lar_matrix));
       nnet->weights[i] = calloc(1, sizeof (struct lar_matrix));

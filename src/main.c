@@ -22,7 +22,7 @@
 
 #define ARG_COMM 1
 #define ARG_ARCH 2
-#define ARG_DEFS "synapse <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=1.0 --lambda=1.0 --lrate=1.0"
+#define ARG_DEFS "synapse <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0"
 
 #define MAX_WTS_RSIZE 5120
 
@@ -133,9 +133,9 @@ void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct la
 	*y->v[j][0] = *(trdata->outputs.v[rnum][j]);
       }
       nn_feed_forward(nnet);
-      nn_back_propagation(nnet, y, bsize);
+      nn_back_propagation(nnet, y);
     }
-    nn_update_weights(nnet, bsize, lambda, reg, lrate);
+    nn_update_weights(nnet, nobs, lambda, reg, lrate);
     //cost = nn_cost(trdata, nnet, y);
     error = nn_error(trdata, nnet, y);
     epoch_num++;

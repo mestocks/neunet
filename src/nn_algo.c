@@ -68,7 +68,7 @@ void nn_feed_forward(struct NeuralNetwork *nnet)
 }
 
 
-void nn_back_propagation(struct NeuralNetwork *nnet, struct lar_matrix *y, int m)
+void nn_back_propagation(struct NeuralNetwork *nnet, struct lar_matrix *y)
 {
   int i, j, l;
   int nlayers;
@@ -147,11 +147,13 @@ void nn_update_weights(struct NeuralNetwork *nnet, int m, double lambda, int reg
 	}
       }
     }
+    
     for (i = 0; i < b->nrows; i++) {
       for (j = 0; j < b->ncols; j++) {
 	*b->v[i][j] += lrate * (*d->v[i][j] / m);
       }
     }
+    
     for (i = 0; i < D->nrows; i++) {
       for (j = 0; j < D->ncols; j++) {
 	*D->v[i][j] = 0.0;

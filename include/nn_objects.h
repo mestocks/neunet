@@ -28,6 +28,7 @@ struct NeuralNetwork {
   struct lar_matrix **weights;
   struct lar_matrix **deltas;
   struct lar_matrix **gradient;
+  struct lar_matrix **tmp_gradient;
   struct lar_matrix **bias_wts;
 };
 

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <lar_objects.h>
@@ -8,7 +9,7 @@
 
 void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)
 {
-  int i;
+  int i, j, k;
   
   nnet->nlayers = nlayers;
   nnet->ninputs = nnodes[0];
@@ -23,6 +24,7 @@ void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)
   nnet->weights = calloc(nlayers - 1, sizeof (struct lar_matrix *));
   nnet->deltas = calloc(nlayers - 1, sizeof (struct lar_matrix *));
   nnet->gradient = calloc(nlayers - 1, sizeof (struct lar_matrix *));
+  nnet->tmp_gradient = calloc(nlayers - 1, sizeof (struct lar_matrix *));
   nnet->bias_wts = calloc(nlayers - 1, sizeof (struct lar_matrix *));
 
   for (i = 0; i < nlayers; i++) {
@@ -32,11 +34,18 @@ void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)
       nnet->deltas[i] = calloc(1, sizeof (struct lar_matrix));
       nnet->weights[i] = calloc(1, sizeof (struct lar_matrix));
       nnet->gradient[i] = calloc(1, sizeof (struct lar_matrix));
+      nnet->tmp_gradient[i] = calloc(1, sizeof (struct lar_matrix));
       nnet->bias_wts[i] = calloc(1, sizeof (struct lar_matrix));
       lar_create_matrix(nnet->deltas[i], nnodes[i + 1], 1);
       lar_create_matrix(nnet->weights[i], nnodes[i], nnodes[i + 1]);
       lar_create_matrix(nnet->gradient[i], nnodes[i], nnodes[i + 1]);
+      lar_create_matrix(nnet->tmp_gradient[i], nnodes[i], nnodes[i + 1]);
       lar_create_matrix(nnet->bias_wts[i], nnodes[i + 1], 1);
+      for (j = 0; j < nnet->gradient[i]->nrows; j++) {
+	for (k = 0; k < nnet->gradient[i]->ncols; k++) {
+	  *nnet->gradient[i]->v[j][k] = 0.0;
+	}
+      }
     }
   }
 }
@@ -49,10 +58,12 @@ void free_network(struct NeuralNetwork *nnet)
     if (i < nnet->nlayers - 1) {
       lar_free_matrix(nnet->bias_wts[i]);
       lar_free_matrix(nnet->gradient[i]);
+      lar_free_matrix(nnet->tmp_gradient[i]);
       lar_free_matrix(nnet->weights[i]);
       lar_free_matrix(nnet->deltas[i]);
       free(nnet->bias_wts[i]);
       free(nnet->gradient[i]);
+      free(nnet->tmp_gradient[i]);
       free(nnet->weights[i]);
       free(nnet->deltas[i]);
     }
@@ -61,6 +72,7 @@ void free_network(struct NeuralNetwork *nnet)
   }
   free(nnet->bias_wts);
   free(nnet->gradient);
+  free(nnet->tmp_gradient);
   free(nnet->deltas);
   free(nnet->weights);
   free(nnet->layers);

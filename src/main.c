@@ -14,6 +14,7 @@
 
 #include <nn_objects.h>
 #include <nn_algo.h>
+#include <nn_args.h>
 #include <nn_fileIO.h>
 #include <nn_metrics.h>
 
@@ -169,61 +170,6 @@ void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
 }
 
 
-void args2hash(struct rwkHashTable *hash, int argc_wo_fname, char **argv)
-{
-  int c;
-  int ddash;
-  char *tmp;
-  char *key;
-  char *value;
-  
-  c = 3;
-  while (c < argc_wo_fname) {
-    if (argv[c][0] == '-' && argv[c][1] == '-') {
-      ddash = 0;
-      tmp = &argv[c][0];
-      while (*tmp) {
-	if (*tmp == '=') {
-	  *tmp = '\0';
-	  key = malloc(128 * sizeof (char));
-	  value = malloc(128 * sizeof (char));
-	  strcpy(key, argv[c]);
-	  strcpy(value, tmp + 1);
-	  rwk_insert_hash(hash, key, value);
-	  ddash = 1;
-	}
-	tmp++;
-      }
-      if (ddash == 0) {
-	key = malloc(128 * sizeof (char));
-	value = malloc(128 * sizeof (char));
-	strcpy(key, argv[c]);
-	value[0] = '1';
-	value[1] = '\0';
-	rwk_insert_hash(hash, key, value);
-      }
-      c++;
-    } else {
-      if (c >= argc_wo_fname - 1 || *argv[c+1] == '-') {
-	key = malloc(128 * sizeof (char));
-	value = malloc(128 * sizeof (char));
-	strcpy(key, argv[c]);
-	value[0] = '1';
-	value[1] = '\0';
-	rwk_insert_hash(hash, key, value);
-	c++;
-      } else {
-	key = malloc(128 * sizeof (char));
-	value = malloc(128 * sizeof (char));
-	strcpy(key, argv[c]);
-	strcpy(value, argv[c + 1]);
-	rwk_insert_hash(hash, key, value);
-	c+=2;
-      }
-    }
-  }
-}
-
 int main(int argc, char **argv)
 {
   int i;
@@ -238,18 +184,19 @@ int main(int argc, char **argv)
     fp = stdin;
     argc_wo_fname = argc;
   }
+
+  char defaults[1024];
+  sprintf(defaults, ARG_DEFS);
   
   int defc;
   char **defv;
-  char defaults[1024];
-  sprintf(defaults, ARG_DEFS);
   defc = rwk_countcols(defaults, " ");
   defv = calloc(defc, sizeof(char *));
   rwk_str2array(defv, defaults, defc, " ");
 
   rwk_create_hash(&arghash, 128);
-  args2hash(&arghash, defc, defv);
-  args2hash(&arghash, argc_wo_fname, argv);
+  nn_args2hash(&arghash, defc, defv);
+  nn_args2hash(&arghash, argc_wo_fname, argv);
   
   free(defv);
   

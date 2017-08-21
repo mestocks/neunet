@@ -251,7 +251,8 @@ int main(int argc, char **argv)
   args2hash(&arghash, defc, defv);
   args2hash(&arghash, argc_wo_fname, argv);
   
-
+  free(defv);
+  
   int nlayers;
   int *nnodes;
   char **net_array;

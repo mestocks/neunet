@@ -18,12 +18,12 @@
 #include <nn_fileIO.h>
 #include <nn_metrics.h>
 
-// synapse learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
-// synapse solve <arch> [--weights=r0,1] [file.test]
+// neunet learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
+// neunet solve <arch> [--weights=r0,1] [file.test]
 
 #define ARG_COMM 1
 #define ARG_ARCH 2
-#define ARG_DEFS "synapse <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0"
 
 #define MAX_WTS_RSIZE 5120
 

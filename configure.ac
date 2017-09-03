@@ -16,10 +16,10 @@ AC_CONFIG_SRCDIR([src/main.c])
 
 AC_CHECK_HEADERS([assert.h limits.h math.h stdint.h stdlib.h string.h time.h unistd.h sys/stat.h])
 AC_CHECK_HEADERS([liblar/lar_algebra.h liblar/lar_init.h liblar/lar_objects.h], [], [], [])
-AC_CHECK_HEADERS([librawk/rwk_htable.h librawk/rwk_parse.h], [], [], [])
+AC_CHECK_HEADERS([librawk/rwk_htable.h], [], [], [])
 
 AC_CHECK_LIB([m],[exp],,[])
-AC_CHECK_LIB([rawk],[rwk_str2array],,[])
+AC_CHECK_LIB([rawk],[rwk_print_hash],,[])
 AC_CHECK_LIB([lar],[lar_matrix_addition],,[])
 
 AM_INIT_AUTOMAKE([subdir-objects foreign])

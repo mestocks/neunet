@@ -36,7 +36,7 @@ extern void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)
 extern void free_network(struct NeuralNetwork *nnet);
 
 struct TrainingData {
-  int nobs;
+  unsigned long nobs;
   int ninputs;
   int noutputs;
   struct lar_matrix inputs;

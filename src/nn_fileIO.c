@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <rwk_parse.h>
+//#include <rwk_parse.h>
 #include <lar_objects.h>
 #include <lar_init.h>
 #include <nn_objects.h>
+#include <nn_string.h>
 
 #define MAX_WTS_RSIZE 5120
 
@@ -22,7 +23,7 @@ void nn_wts_from_file(struct NeuralNetwork *nnet, char *fname)
   
   array = calloc(1, sizeof (char*));
   while (fgets(buffer, sizeof(buffer), fp)) {
-    rwk_str2array(array, buffer, 1, &delim);
+    nn_str2array(array, buffer, 1, &delim);
     if (b < nnet->bias_wts[l]->nrows) {
       *(nnet->bias_wts[l])->v[b][0] = atof(array[0]);
       b++;
@@ -47,7 +48,8 @@ void nn_wts_from_file(struct NeuralNetwork *nnet, char *fname)
 
 void nn_file2array(struct TrainingData *trdata, FILE *fp, int ninputs, int noutputs, char *delim)
 {
-  int h, i, j, n;  
+  int h, i, j;
+  unsigned long n;
   long size;
   char *tmp;
   char *last;
@@ -61,6 +63,7 @@ void nn_file2array(struct TrainingData *trdata, FILE *fp, int ninputs, int noutp
   buffer = calloc(buffer_size, sizeof (char));
   fread(buffer, 1, size, fp);
 
+  /*
   n = 0;
   tmp = buffer;
   while (*tmp) {
@@ -69,6 +72,10 @@ void nn_file2array(struct TrainingData *trdata, FILE *fp, int ninputs, int noutp
     }
     tmp++;
   }
+  */
+
+  n = nn_nchar(buffer, "\n");
+  
   trdata->nobs = n;
   trdata->ninputs = ninputs;
   trdata->noutputs = noutputs;
@@ -109,7 +116,7 @@ void nn_file2array(struct TrainingData *trdata, FILE *fp, int ninputs, int noutp
 
 void nn_load_trdata(struct lar_matrix *trinput, struct lar_matrix *troutput, int ninputs, int noutputs, FILE *fp, char *delim)
 {
-  int nobs;
+  unsigned long nobs;
   int h, i, j;  
   long size;
   char *tmp;
@@ -124,6 +131,7 @@ void nn_load_trdata(struct lar_matrix *trinput, struct lar_matrix *troutput, int
   buffer = calloc(buffer_size, sizeof (char));
   fread(buffer, 1, size, fp);
 
+  /*
   nobs = 0;
   tmp = buffer;
   while (*tmp) {
@@ -132,6 +140,9 @@ void nn_load_trdata(struct lar_matrix *trinput, struct lar_matrix *troutput, int
     }
     tmp++;
   }
+  */
+
+  nobs = nn_nchar(buffer, "\n");
   
   lar_create_matrix(trinput, nobs, ninputs);
   lar_create_matrix(troutput, nobs, noutputs);

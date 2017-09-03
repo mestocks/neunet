@@ -1,0 +1,2 @@
+#define MAXCOLS UINT_MAX + 1
+#define MAXROWS ULONG_MAX

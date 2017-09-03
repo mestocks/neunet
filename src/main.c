@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 
-#include <rwk_parse.h>
+//#include <rwk_parse.h>
 #include <rwk_htable.h>
 
 #include <lar_objects.h>
@@ -17,6 +17,7 @@
 #include <nn_args.h>
 #include <nn_fileIO.h>
 #include <nn_metrics.h>
+#include <nn_string.h>
 
 // neunet learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
 // neunet solve <arch> [--weights=r0,1] [file.test]
@@ -117,7 +118,7 @@ void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct la
   epoch_num = 0;
   srand(time(NULL));
 
-  int nobs;
+  unsigned long nobs;
   nobs = trdata->nobs;
   
   //cost = nn_cost(trdata, nnet, y);
@@ -158,7 +159,7 @@ void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
   
   array = calloc(nnet->ninputs, sizeof (char*));
   while (fgets(buffer, sizeof(buffer), fp)) {
-    rwk_str2array(array, buffer, nnet->ninputs, &delim);
+    nn_str2array(array, buffer, (unsigned long)nnet->ninputs, &delim);
     
     for (i = 0; i < nnet->ninputs; i++) {
       *(nnet->layers[0])->v[i][0] = atof(array[i]);
@@ -188,14 +189,14 @@ int main(int argc, char **argv)
   char defaults[1024];
   sprintf(defaults, ARG_DEFS);
   
-  int defc;
   char **defv;
-  defc = rwk_countcols(defaults, " ");
+  unsigned long defc;
+  defc = nn_nchar(defaults, " ") + 1;
   defv = calloc(defc, sizeof(char *));
-  rwk_str2array(defv, defaults, defc, " ");
+  nn_str2array(defv, defaults, defc, " ");
 
   rwk_create_hash(&arghash, 128);
-  nn_args2hash(&arghash, defc, defv);
+  nn_args2hash(&arghash, (int)defc, defv);
   nn_args2hash(&arghash, argc_wo_fname, argv);
   
   free(defv);
@@ -204,10 +205,10 @@ int main(int argc, char **argv)
   int *nnodes;
   char **net_array;
   char net_delim = ',';
-  nlayers = rwk_countcols(argv[ARG_ARCH], &net_delim);
+  nlayers = nn_nchar(argv[ARG_ARCH], &net_delim) + 1;
   nnodes = calloc(nlayers, sizeof (int));
   net_array = calloc(nlayers, sizeof (char*));
-  rwk_str2array(net_array, argv[ARG_ARCH], nlayers, &net_delim);
+  nn_str2array(net_array, argv[ARG_ARCH], (unsigned long)nlayers, &net_delim);
   for (i = 0; i < nlayers; i++) {
     nnodes[i] = atoi(net_array[i]);
   }

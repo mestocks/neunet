@@ -4,15 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
-
-//#include <rwk_parse.h>
-#include <rwk_htable.h>
-
 #include <lar_objects.h>
 #include <lar_init.h>
 
 #include <nn_objects.h>
+#include <nn_hash.h>
 #include <nn_algo.h>
 #include <nn_args.h>
 #include <nn_fileIO.h>
@@ -22,12 +18,9 @@
 // neunet learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
 // neunet solve <arch> [--weights=r0,1] [file.test]
 
-#define ARG_COMM 1
-#define ARG_ARCH 2
-#define ARG_DEFS "neunet <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 [file]"
 
 #define MAX_WTS_RSIZE 5120
-
 
 void print_output(struct NeuralNetwork *nnet)
 {
@@ -82,7 +75,7 @@ void load_weights(char *fname, struct NeuralNetwork *nnet)
 }
 
 
-void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y, struct rwkHashTable *hash)
+void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y, struct nnArgStore *Pmers)
 {
   /*
    *
@@ -101,11 +94,11 @@ void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct la
   double lrate;
   double lambda;
 
-  reg = atoi((char *)rwk_lookup_hash(hash, "--reg"));
-  bsize = atoi((char *)rwk_lookup_hash(hash, "--bsize"));
-  nepochs = atoi((char *)rwk_lookup_hash(hash, "--nepochs"));
-  lrate = atof((char *)rwk_lookup_hash(hash, "--lrate"));
-  lambda = atof((char *)rwk_lookup_hash(hash, "--lambda"));
+  reg = atoi(nn_lookup_hash(Pmers->arghash, "reg"));
+  bsize = atoi(nn_lookup_hash(Pmers->arghash, "bsize"));
+  nepochs = atoi(nn_lookup_hash(Pmers->arghash, "nepochs"));
+  lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
+  lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
 
   int rnum;
   int i, j;
@@ -174,41 +167,32 @@ void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
 int main(int argc, char **argv)
 {
   int i;
-  FILE *fp;
-  int argc_wo_fname;
-  struct rwkHashTable arghash;
-  
-  if (access(argv[argc - 1], F_OK) != -1) {
-    fp = fopen(argv[argc - 1], "r");
-    argc_wo_fname = argc - 1;
-  } else {
-    fp = stdin;
-    argc_wo_fname = argc;
-  }
-
-  char defaults[1024];
-  sprintf(defaults, ARG_DEFS);
-  
   char **defv;
   unsigned long defc;
+  char defaults[1024];
+  struct nnArgStore *Pmers;
+  
+  sprintf(defaults, ARG_DEFS);
   defc = nn_nchar(defaults, " ") + 1;
-  defv = calloc(defc, sizeof(char *));
+  defv = calloc(defc, sizeof *defv);
   nn_str2array(defv, defaults, defc, " ");
 
-  rwk_create_hash(&arghash, 128);
-  nn_args2hash(&arghash, (int)defc, defv);
-  nn_args2hash(&arghash, argc_wo_fname, argv);
+  Pmers = calloc(1, sizeof *Pmers);
+  Pmers->arghash = calloc(1, sizeof *Pmers->arghash);
+  nn_create_hash(Pmers->arghash, 128);
   
-  free(defv);
+  nn_arg_parse(Pmers, (int)defc, defv);
+  nn_arg_parse(Pmers, argc, argv);
   
   int nlayers;
   int *nnodes;
   char **net_array;
   char net_delim = ',';
-  nlayers = nn_nchar(argv[ARG_ARCH], &net_delim) + 1;
+  
+  nlayers = nn_nchar(Pmers->arch, &net_delim) + 1;
   nnodes = calloc(nlayers, sizeof (int));
   net_array = calloc(nlayers, sizeof (char*));
-  nn_str2array(net_array, argv[ARG_ARCH], (unsigned long)nlayers, &net_delim);
+  nn_str2array(net_array, Pmers->arch, (unsigned long)nlayers, &net_delim);
   for (i = 0; i < nlayers; i++) {
     nnodes[i] = atoi(net_array[i]);
   }
@@ -223,17 +207,17 @@ int main(int argc, char **argv)
   struct lar_matrix troutput;
   create_network(&nnet, nlayers, &nnodes[0]);
   lar_create_matrix(&y, nnodes[nlayers - 1], 1);
-  load_weights((char *)rwk_lookup_hash(&arghash, "--weights"), &nnet);
+  load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &nnet);
   
-  if (strcmp(argv[ARG_COMM], "solve") == 0) {
+  if (strcmp(Pmers->cmd, "solve") == 0) {
     
-    nn_solve(fp, &nnet);
+    nn_solve(Pmers->fp, &nnet);
     
-  } else if (strcmp(argv[ARG_COMM], "learn") == 0) {
+  } else if (strcmp(Pmers->cmd, "learn") == 0) {
     
-    nn_file2array(&trdata, fp, nnet.ninputs, nnet.noutputs, &delim);
+    nn_file2array(&trdata, Pmers->fp, nnet.ninputs, nnet.noutputs, &delim);
     //nn_load_trdata(&trinput, &troutput, nnet.ninputs, nnet.noutputs, fp, &delim);
-    nn_learn(&trdata, &nnet, &y, &arghash);
+    nn_learn(&trdata, &nnet, &y, Pmers);
     
     lar_free_matrix(&trdata.inputs);
     lar_free_matrix(&trdata.outputs);
@@ -245,8 +229,11 @@ int main(int argc, char **argv)
   lar_free_matrix(&y);
   free_network(&nnet);
   free(nnodes);
-  rwk_free_hash(&arghash);
-  fclose(fp);
+
+  nn_free_hash(Pmers->arghash);
+  free(Pmers->arghash);
+  fclose(Pmers->fp);
+  free(Pmers);
   
   return 0;
 }

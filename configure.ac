@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([neunet], [0.0.9], [mestocks@protonmail.com])
+AC_INIT([neunet], [0.0.10], [mestocks@protonmail.com])
 
 AC_PROG_CC
 AC_PROG_INSTALL

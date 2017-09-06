@@ -105,7 +105,7 @@ void nn_free_hash(struct nnHashTable *hash)
 {
   unsigned long i;
   struct nnHashNode *curr, *prev;
-
+  
   for (i = 0; i < hash->size; i++) {
     curr = hash->table[i];
     while (curr != NULL) {

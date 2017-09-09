@@ -27,6 +27,33 @@
 
  */
 
+/*
+ *
+ *      / nodes \
+ * X = [. . . . 1] \
+ *     [. . . . 1]  training examples
+ *     [. . . . 1] /
+ *
+ * A = X * W
+ * 
+ */
+
+void batch_vec_feed_forward(struct NeuralNetwork *nnet)
+{
+  int i, l;
+  struct lar_matrix *A, *W, *X;
+  
+  for (l = 0; l < nnet->nlayers - 1; l++) {
+    A = nnet->layers[l + 1];
+    W = nnet->weights[l];
+    X = nnet->layers[l];
+    for (i = 0; i < X->nrows; i++) {
+      *X->v[i][X->ncols - 1] = 1.0;
+    }
+    lar_matrix_multiply_naive(A, X, W);
+  }
+}
+
 void feed_forward2(struct NeuralNetwork *nnet)
 {
   int l;

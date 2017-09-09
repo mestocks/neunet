@@ -4,7 +4,61 @@
 #include <lar_objects.h>
 #include <lar_init.h>
 
+#include <nn_matrix.h>
 #include <nn_objects.h>
+
+void create_neunet(struct NeuNet *nnet, int *nnodes, int nlayers, int nobs, int nbatches)
+{
+  int n;
+  nnet->nobs = nobs;
+  nnet->nlayers = nlayers;
+  nnet->nweights = nlayers - 1;
+  
+  nnet->layers = calloc(nlayers, sizeof *nnet->layers);
+  for (n = 0; n < nlayers; n++) {
+    nnet->layers[n] = calloc(1, sizeof *nnet->layers[n]);
+    if (n == nlayers - 1) {
+      create_shadow_matrix(nnet->layers[n], nbatches, nnodes[n]);
+    } else if (n == 0) {
+      nnet->layers[n]->nrows = nbatches;
+      nnet->layers[n]->ncols = nnodes[n] + 1;
+      nnet->layers[n]->data = calloc(nbatches, sizeof *nnet->layers[n]->data);
+    } else {
+      create_shadow_matrix(nnet->layers[n], nbatches, nnodes[n] + 1);
+    }
+  }
+  
+  nnet->weights = calloc(nnet->nweights, sizeof *nnet->weights);
+  for (n = 0; n < nnet->nweights; n++) {
+    nnet->weights[n] = calloc(1, sizeof *nnet->weights[n]);
+    create_shadow_matrix(nnet->weights[n], nnodes[n] + 1, nnodes[n + 1]);
+  }
+}
+
+void free_neunet(struct NeuNet *nnet)
+{
+  int i, j, n;
+  for (n = 0; n < nnet->nlayers; n++) {
+    if (n != 0) {
+      for (i = 0; i < nnet->layers[n]->nrows; i++) {
+	free(nnet->layers[n]->data[i]);
+      }
+    }
+    free(nnet->layers[n]->data);
+    free(nnet->layers[n]);
+  }
+  free(nnet->layers);
+
+  for (n = 0; n < nnet->nweights; n++) {
+    for (i = 0; i < nnet->weights[n]->nrows; i++) {
+      free(nnet->weights[n]->data[i]);
+    }
+    
+    free(nnet->weights[n]->data);
+    free(nnet->weights[n]);
+  }
+  free(nnet->weights);
+}
 
 
 void create_network(struct NeuralNetwork *nnet, int nlayers, int *nnodes)

@@ -2,9 +2,24 @@
 #define lar_objects_h__
 #endif
 
+#ifndef nn_matrix_h__
+#define nn_matrix_h__
+#endif
+
 #ifndef nn_objects_h__
 #define nn_objects_h__
 #endif
+
+struct NeuNet {
+  int nobs;
+  int nlayers;
+  int nweights;
+  struct ShadowMatrix **layers;
+  struct ShadowMatrix **weights;
+};
+
+extern void create_neunet(struct NeuNet *nnet, int *nnodes, int nlayers, int nobs, int nbatches);
+extern void free_neunet(struct NeuNet *nnet);
 
 /*
  *

@@ -7,6 +7,7 @@
 #include <lar_init.h>
 #include <lar_algebra.h>
 
+#include <nn_matrix.h>
 #include <nn_objects.h>
 
 #define sigmoid(x) (1 / (1 + exp(-x)))
@@ -37,6 +38,23 @@
  * A = X * W
  * 
  */
+
+void minibatch_feed_forward(struct NeuNet *nnet)
+{
+  int i, l;
+  struct ShadowMatrix *A, *W, *X;
+  
+  for (l = 0; l < nnet->nlayers - 1; l++) {
+    A = nnet->layers[l + 1];
+    W = nnet->weights[l];
+    X = nnet->layers[l];
+    for (i = 0; i < X->nrows; i++) {
+      X->data[i][X->ncols - 1] = 1.0;
+    }
+    matrix_multiply_naive(A, X, W);
+  }
+}
+
 
 void batch_vec_feed_forward(struct NeuralNetwork *nnet)
 {

@@ -4,9 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <lar_objects.h>
-#include <lar_init.h>
-
+#include <nn_matrix.h>
 #include <nn_objects.h>
 #include <nn_hash.h>
 #include <nn_algo.h>
@@ -15,28 +13,9 @@
 #include <nn_metrics.h>
 #include <nn_string.h>
 
-// neunet learn <arch> [--weights=r0,1 --nepochs=1] [file.train]
-// neunet solve <arch> [--weights=r0,1] [file.test]
-
-#define ARG_DEFS "neunet <cmd> <arch> --weights=r0,1 --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 [file]"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 [file]"
 
 #define MAX_WTS_RSIZE 5120
-
-void print_output(struct NeuralNetwork *nnet)
-{
-  lar_printf(" ", "\n", nnet->layers[nnet->nlayers - 1]->T);
-}
-
-
-void print_weights(struct NeuralNetwork *nnet)
-{
-  int l;
-  
-  for (l = 0; l < nnet->nlayers - 1; l++) {
-    lar_printf("\n", "\n", nnet->bias_wts[l]);
-    lar_printf("\n", "\n", nnet->weights[l]);
-  }  
-}
 
 double r_urange(double min, double max)
 {
@@ -47,27 +26,38 @@ double r_urange(double min, double max)
   return min + (rand() / div);
 }
 
-void load_weights(char *fname, struct NeuralNetwork *nnet)
+void print_weights(struct NeuNet *nnet)
+{
+  unsigned long l, i, j;
+  
+  for (l = 0; l < nnet->nweights; l++) {
+    printf("%f\n", nnet->bias_wts[l]);
+    for (i = 0; i < nnet->weights[l].nrows; i++) {
+      for (j = 0; j < nnet->weights[l].ncols; j++) {
+	printf("%f\n", nnet->weights[l].data[i][j]);
+      }
+    }
+  }
+}
+
+
+void load_weights(char *fname, struct NeuNet *nnet)
 {
   int i, j, l;
   
-  if (strcmp(fname, "r0,1") == 0) {
+  if (strcmp(fname, "rSQRT") == 0) {
     srand(time(NULL));
     double min, max, scalar;
     for (l = 0; l < nnet->nlayers - 1; l++) {
-      scalar = sqrt(nnet->layers[l]->nrows + 1);
+      scalar = sqrt(nnet->layers[l].nrows + 1);
       min = -1 / scalar;
       max = 1 / scalar;
-      for (i = 0; i < nnet->weights[l]->nrows; i++) {
-	for (j = 0; j < nnet->weights[l]->ncols; j++) {
-	  *nnet->weights[l]->v[i][j] = r_urange(min, max);
+      for (i = 0; i < nnet->weights[l].nrows; i++) {
+	for (j = 0; j < nnet->weights[l].ncols; j++) {
+	  nnet->weights[l].data[i][j] = r_urange(min, max);
 	}
       }
-      for (i = 0; i < nnet->bias_wts[l]->nrows; i++) {
-	for (j = 0; j < nnet->bias_wts[l]->ncols; j++) {
-	  *nnet->bias_wts[l]->v[i][j] = r_urange(min, max);
-	}
-      }
+      nnet->bias_wts[l] = r_urange(min, max);
     }
   } else {
     nn_wts_from_file(nnet, fname);
@@ -75,34 +65,27 @@ void load_weights(char *fname, struct NeuralNetwork *nnet)
 }
 
 
-void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y, struct nnArgStore *Pmers)
+void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outputs, struct nnArgStore *Pmers)
 {
-  /*
-   *
-   * --updates=k
-   *
-   *   k = 1
-   *        update weights after every observation (stochastic gradient descent)
-   *   1 < k < nobs
-   *        mini-batch gradient descent
-   *   k = nobs
-   *        update weights only after all observations (gradient descent)
-   */
+  char *e;
+  int base;
   int reg;
-  int bsize;
-  int nepochs;
+  //unsigned long bsize;
+  unsigned long nepochs;
   double lrate;
   double lambda;
 
+  base = 10;
+  
   reg = atoi(nn_lookup_hash(Pmers->arghash, "reg"));
-  bsize = atoi(nn_lookup_hash(Pmers->arghash, "bsize"));
-  nepochs = atoi(nn_lookup_hash(Pmers->arghash, "nepochs"));
+  //bsize = atoi(nn_lookup_hash(Pmers->arghash, "bsize"));
+  nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, base);
   lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
   lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
 
   int rnum;
-  int i, j;
-  int epoch_num;
+  unsigned long i, j;
+  unsigned long epoch_num;
   double cost;
   double error;
 
@@ -112,29 +95,28 @@ void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct la
   srand(time(NULL));
 
   unsigned long nobs;
-  nobs = trdata->nobs;
+  nobs = inputs->nrows;
   
-  //cost = nn_cost(trdata, nnet, y);
-  error = nn_error(trdata, nnet, y);
-  fprintf(stderr, "%d %f\n", epoch_num, error);
+  error = nn_error(nnet, inputs, outputs);
+  fprintf(stderr, "%lu %f\n", epoch_num, error);
+  
   while (1) {
 
-    for (i = 0; i < bsize; i++) {
+    for (i = 0; i < nnet->nbatches; i++) {
       rnum = r_urange(0, nobs);
-      for (j = 0; j < nnet->ninputs; j++) {
-	*(nnet->layers[0]->v[j][0]) = *(trdata->inputs.v[rnum][j]);
-      }
-      for (j = 0; j < nnet->noutputs; j++) {
-	*y->v[j][0] = *(trdata->outputs.v[rnum][j]);
-      }
-      nn_feed_forward(nnet);
-      nn_back_propagation(nnet, y);
+      nnet->layers[0].data[i] = inputs->data[rnum];
+      nnet->output.data[i] = outputs->data[rnum];
     }
-    nn_update_weights(nnet, nobs, lambda, reg, lrate);
-    //cost = nn_cost(trdata, nnet, y);
-    error = nn_error(trdata, nnet, y);
+    minibatch_feed_forward(nnet);
+    minibatch_back_propagation(nnet);
+    // nobs passed to update as I think that it should be lambda / nobs
+    // rather than the number of batches (even though this doesn't make
+    // much sense)
+    minibatch_update_weights(nnet, nobs, lambda, reg, lrate);
+    
+    error = nn_error(nnet, inputs, outputs);
     epoch_num++;
-    fprintf(stderr, "%d %f\n", epoch_num, error);
+    fprintf(stderr, "%lu %f\n", epoch_num, error);
 
     if (epoch_num == nepochs) {
       print_weights(nnet);
@@ -143,34 +125,52 @@ void nn_learn(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct la
   }  
 }
 
-void nn_solve(FILE *fp, struct NeuralNetwork *nnet)
+void nn_solve(FILE *fp, struct NeuNet *nnet)
 {
-  int i;
+  unsigned long i;
   char **array;
   char delim = ' ';
   char buffer[51200];
+  double *inputs;
+  unsigned long bsize;
+
+  bsize = 1;
+  inputs = calloc(bsize * nnet->ninputs, sizeof *inputs);
   
   array = calloc(nnet->ninputs, sizeof (char*));
   while (fgets(buffer, sizeof(buffer), fp)) {
-    nn_str2array(array, buffer, (unsigned long)nnet->ninputs, &delim);
+    nn_str2array(array, buffer, nnet->ninputs, &delim);
     
     for (i = 0; i < nnet->ninputs; i++) {
-      *(nnet->layers[0])->v[i][0] = atof(array[i]);
+      inputs[i] = atof(array[i]);
     }
-    nn_feed_forward(nnet);
-    print_output(nnet);
+    nnet->layers[0].data[0] = inputs;
+    minibatch_feed_forward(nnet);
+    
+    printf("%f", nnet->layers[nnet->nlayers - 1].data[0][0]);
+    for (i = 1; i < nnet->noutputs; i++) {
+      printf(" %f", nnet->layers[nnet->nlayers - 1].data[0][i]);
+    }
+    printf("\n");
   }
-  free(array);  
+  
+  free(array);
+  free(inputs);
+  
 }
 
 
 int main(int argc, char **argv)
 {
   int i;
+  char *e;
+  int base;
   char **defv;
   unsigned long defc;
   char defaults[1024];
   struct nnArgStore *Pmers;
+
+  base = 10;
   
   sprintf(defaults, ARG_DEFS);
   defc = nn_nchar(defaults, " ") + 1;
@@ -184,56 +184,57 @@ int main(int argc, char **argv)
   nn_arg_parse(Pmers, (int)defc, defv);
   nn_arg_parse(Pmers, argc, argv);
   
-  int nlayers;
-  int *nnodes;
+  unsigned long n;
+  unsigned long nlayers;
+  unsigned long *nnodes;
   char **net_array;
   char net_delim = ',';
-  
-  nlayers = nn_nchar(Pmers->arch, &net_delim) + 1;
-  nnodes = calloc(nlayers, sizeof (int));
-  net_array = calloc(nlayers, sizeof (char*));
-  nn_str2array(net_array, Pmers->arch, (unsigned long)nlayers, &net_delim);
-  for (i = 0; i < nlayers; i++) {
-    nnodes[i] = atoi(net_array[i]);
+
+  nlayers = (unsigned long)nn_nchar(Pmers->arch, &net_delim) + 1;
+  nnodes = calloc(nlayers, sizeof *nnodes);
+  net_array = calloc(nlayers, sizeof *net_array);
+  nn_str2array(net_array, Pmers->arch, nlayers, &net_delim);
+  for (n = 0; n < nlayers; n++) {
+    nnodes[n] = atoi(net_array[n]);
   }
   free(net_array);
   
-
   char delim = ' ';
-  struct lar_matrix y;
-  struct NeuralNetwork nnet;
-  struct TrainingData trdata;
-  struct lar_matrix trinput;
-  struct lar_matrix troutput;
-  create_network(&nnet, nlayers, &nnodes[0]);
-  lar_create_matrix(&y, nnodes[nlayers - 1], 1);
-  load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &nnet);
-  
+  unsigned long bsize;
+  struct NeuNet neunet;
+
+  bsize = strtoul(nn_lookup_hash(Pmers->arghash, "bsize"), &e, base);
+  create_neunet(&neunet, nnodes, nlayers, bsize);
+  load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &neunet);
+
   if (strcmp(Pmers->cmd, "solve") == 0) {
     
-    nn_solve(Pmers->fp, &nnet);
+    nn_solve(Pmers->fp, &neunet);
     
   } else if (strcmp(Pmers->cmd, "learn") == 0) {
     
-    nn_file2array(&trdata, Pmers->fp, nnet.ninputs, nnet.noutputs, &delim);
-    //nn_load_trdata(&trinput, &troutput, nnet.ninputs, nnet.noutputs, fp, &delim);
-    nn_learn(&trdata, &nnet, &y, Pmers);
-    
-    lar_free_matrix(&trdata.inputs);
-    lar_free_matrix(&trdata.outputs);
+    struct InOutData iodata;
+
+    nn_file2array(&iodata, Pmers->fp, nnodes[0], nnodes[nlayers - 1], &delim);
+    nn_learn(&neunet, &iodata.inputs, &iodata.outputs, Pmers);
+
+    free_smatrix(&iodata.inputs);
+    free_smatrix(&iodata.outputs);
+    free(iodata.input_data);
+    free(iodata.output_data);
     
   } else {
     printf("help\n");
   }
   
-  lar_free_matrix(&y);
-  free_network(&nnet);
+  free_neunet(&neunet);
   free(nnodes);
 
   nn_free_hash(Pmers->arghash);
   free(Pmers->arghash);
   fclose(Pmers->fp);
   free(Pmers);
+  free(defv);
   
   return 0;
 }

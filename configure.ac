@@ -15,10 +15,8 @@ AC_CONFIG_MACRO_DIRS([m4])
 AC_CONFIG_SRCDIR([src/main.c])
 
 AC_CHECK_HEADERS([assert.h limits.h math.h stdint.h stdlib.h string.h time.h unistd.h sys/stat.h])
-AC_CHECK_HEADERS([liblar/lar_algebra.h liblar/lar_init.h liblar/lar_objects.h], [], [], [])
 
 AC_CHECK_LIB([m],[exp],,[])
-AC_CHECK_LIB([lar],[lar_matrix_addition],,[])
 
 AM_INIT_AUTOMAKE([subdir-objects foreign])
 

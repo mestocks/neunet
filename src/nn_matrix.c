@@ -52,12 +52,6 @@ void smatrix_multiply(struct SMatrix *M, struct SMatrix *A, struct SMatrix *B)
   double tmp;
   unsigned long i, j, k;
 
-  /*
-  assert(A->ncols == B->nrows);
-  assert(M->nrows == A->nrows);
-  assert(M->ncols == B->ncols);
-  */
-  //printf("%lux%lu %lux%lu %lux%lu\n", M->nrows, M->ncols, A->nrows, A->ncols, B->nrows, B->ncols);
   for (i = 0; i < A->nrows; i++) {
     for (j = 0; j < B->ncols; j++) {
       tmp = 0;
@@ -67,7 +61,6 @@ void smatrix_multiply(struct SMatrix *M, struct SMatrix *A, struct SMatrix *B)
       M->data[i][j] = tmp;
     }
   }
-  printf("\n");
 }
 
 /***************/

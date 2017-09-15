@@ -1,67 +1,74 @@
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-#include <lar_objects.h>
-#include <lar_init.h>
+#include <nn_matrix.h>
 #include <nn_objects.h>
 #include <nn_algo.h>
 
-double nn_error(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y)
+double nn_error(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outputs)
 {
-  int m, j;
+  unsigned long b, m, i, j;
   double error;
   double tmp_error;
   double exp;
   double obs;
-  struct lar_matrix *a;
 
+  b = 0;
   error = 0.0;
-  a = nnet->layers[nnet->nlayers - 1];
-  for (m = 0; m < trdata->nobs; m++) {
-    for (j = 0; j < trdata->ninputs; j++) {
-      *(nnet->layers[0]->v[j][0]) = *(trdata->inputs.v[m][j]);
-    }
-    for (j = 0; j < trdata->noutputs; j++) {
-      *y->v[j][0] = *(trdata->outputs.v[m][j]);
-    }
-    nn_feed_forward(nnet);
 
-    for (j = 0; j < a->nrows; j++) {
-      exp = *y->v[j][0];
-      obs = *a->v[j][0];
-      tmp_error = obs - exp;
-      error += tmp_error * tmp_error;
+  for (m = 0; m < inputs->nrows; m++) {
+
+    nnet->layers[0].data[b] = inputs->data[m];
+    nnet->output.data[b] = outputs->data[m];
+    
+    if (b == nnet->nbatches - 1) {
+      minibatch_feed_forward(nnet);
+      for (i = 0; i < nnet->output.nrows; i++) {
+	for (j = 0; j < nnet->output.ncols; j++) {
+	  exp = nnet->output.data[i][j];
+	  obs = nnet->layers[nnet->nlayers - 1].data[i][j];
+	  tmp_error = obs - exp;
+	  error += tmp_error * tmp_error;
+	}
+      }
+      b = 0;
+    } else {
+      b++;
     }
   }
-  return error / (2 * trdata->nobs);
+  return error / (2 * inputs->nrows);    
 }
 
-double nn_cost(struct TrainingData *trdata, struct NeuralNetwork *nnet, struct lar_matrix *y)
+double nn_cost(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outputs)
 {
-  int m, j;
+  unsigned long b, m, i, j;
   double cost;
   double tmp_cost;
   double exp;
   double obs;
-  struct lar_matrix *a;
 
   cost = 0.0;
-  a = nnet->layers[nnet->nlayers - 1];
-  for (m = 0; m < trdata->nobs; m++) {
-    for (j = 0; j < trdata->ninputs; j++) {
-      *(nnet->layers[0]->v[j][0]) = *(trdata->inputs.v[m][j]);
-    }
-    for (j = 0; j < trdata->noutputs; j++) {
-      *y->v[j][0] = *(trdata->outputs.v[m][j]);
-    }
-    nn_feed_forward(nnet);
 
-    for (j = 0; j < a->nrows; j++) {
-      exp = *y->v[j][0];
-      obs = *a->v[j][0];
-      tmp_cost = (-exp * log(obs)) - ((1 - exp) * log(1 - obs));
-      cost += tmp_cost;
+  for (m = 0; m < inputs->nrows; m++) {
+
+    nnet->layers[0].data[b] = inputs->data[m];
+    nnet->output.data[b] = outputs->data[m];
+    
+    if (b == nnet->nbatches - 1) {
+      minibatch_feed_forward(nnet);
+      for (i = 0; i < nnet->output.nrows; i++) {
+	for (j = 0; j < nnet->output.ncols; j++) {
+	  exp = nnet->output.data[i][j];
+	  obs = nnet->layers[0].data[i][j];
+	  tmp_cost = (-exp * log(obs)) - ((1 - exp) * log(1 - obs));
+	  cost += tmp_cost;
+	}
+      }
+      b = 0;
+    } else {
+      b++;
     }
   }
-  return cost / trdata->nobs;
+  return cost / inputs->nrows;
 }

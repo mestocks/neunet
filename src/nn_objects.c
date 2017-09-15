@@ -7,57 +7,121 @@
 #include <nn_matrix.h>
 #include <nn_objects.h>
 
-void create_neunet(struct NeuNet *nnet, int *nnodes, int nlayers, int nobs, int nbatches)
+void create_neunet(struct NeuNet *nnet,
+		   unsigned long *nnodes,
+		   unsigned long nlayers,
+		   unsigned long nobs,
+		   unsigned long nbatches)
 {
-  int n;
+  double *ptr;
+  unsigned long n, size;
+  
   nnet->nobs = nobs;
   nnet->nlayers = nlayers;
+  nnet->nbatches = nbatches;
   nnet->nweights = nlayers - 1;
-  
+
+  nnet->bias_wts = calloc(nlayers - 1, sizeof *nnet->bias_wts);
   nnet->layers = calloc(nlayers, sizeof *nnet->layers);
-  for (n = 0; n < nlayers; n++) {
-    nnet->layers[n] = calloc(1, sizeof *nnet->layers[n]);
-    if (n == nlayers - 1) {
-      create_shadow_matrix(nnet->layers[n], nbatches, nnodes[n]);
-    } else if (n == 0) {
-      nnet->layers[n]->nrows = nbatches;
-      nnet->layers[n]->ncols = nnodes[n] + 1;
-      nnet->layers[n]->data = calloc(nbatches, sizeof *nnet->layers[n]->data);
-    } else {
-      create_shadow_matrix(nnet->layers[n], nbatches, nnodes[n] + 1);
-    }
+  nnet->deltas = calloc(nlayers - 1, sizeof *nnet->deltas);
+  nnet->bias_deltas = calloc(nlayers - 1, sizeof *nnet->deltas);
+  
+  // Input layer - do not allocate double array
+  n = 0;
+  create_smatrix(&nnet->layers[n], nbatches, nnodes[n]);
+
+  // Training output
+  create_smatrix(&nnet->output, nbatches, nnodes[n]);
+  
+  // Hidden layers
+  for (n = 1; n < nlayers - 1; n++) {
+    ptr = calloc(nbatches * nnodes[n], sizeof *ptr);
+    create_smatrix(&nnet->layers[n], nbatches, nnodes[n]);
+    attach_smatrix(&nnet->layers[n], ptr);
+
+    ptr = calloc(nbatches * nnodes[n], sizeof *ptr);
+    create_smatrix(&nnet->deltas[n - 1], nnodes[n], nbatches);
+    attach_smatrix(&nnet->deltas[n - 1], ptr);
+
+    ptr = calloc(nbatches, sizeof *ptr);
+    create_smatrix(&nnet->bias_deltas[n - 1], nbatches, 1);
+    attach_smatrix(&nnet->bias_deltas[n - 1], ptr);
   }
+
+  // Output layer - no bias in final layer
+  n = nlayers - 1;
+  ptr = calloc(nbatches * nnodes[n], sizeof *ptr);
+  create_smatrix(&nnet->layers[n], nbatches, nnodes[n]);
+  attach_smatrix(&nnet->layers[n], ptr);
+
+  ptr = calloc(nbatches * (nnodes[n]), sizeof *ptr);
+  create_smatrix(&nnet->deltas[n - 1], nnodes[n], nbatches);
+  attach_smatrix(&nnet->deltas[n - 1], ptr);
+
+  ptr = calloc(nbatches, sizeof *ptr);
+  create_smatrix(&nnet->bias_deltas[n - 1], nbatches, 1);
+  attach_smatrix(&nnet->bias_deltas[n - 1], ptr);
+
   
   nnet->weights = calloc(nnet->nweights, sizeof *nnet->weights);
+  nnet->gradient = calloc(nnet->nweights, sizeof *nnet->gradient);
+  nnet->tmp_gradient = calloc(nnet->nweights, sizeof *nnet->tmp_gradient);
+  
+  // Allocate weights
   for (n = 0; n < nnet->nweights; n++) {
-    nnet->weights[n] = calloc(1, sizeof *nnet->weights[n]);
-    create_shadow_matrix(nnet->weights[n], nnodes[n] + 1, nnodes[n + 1]);
+    size = nnodes[n] * nnodes[n + 1];
+
+    // weights
+    ptr = calloc(size, sizeof *ptr);
+    create_smatrix(&nnet->weights[n], nnodes[n], nnodes[n + 1]);
+    attach_smatrix(&nnet->weights[n], ptr);
+
+    // gradient
+    ptr = calloc(size, sizeof *ptr);
+    create_smatrix(&nnet->gradient[n], nnodes[n + 1], nnodes[n]);
+    attach_smatrix(&nnet->gradient[n], ptr);
+
+    // tmp_gradient
+    ptr = calloc(size, sizeof *ptr);
+    create_smatrix(&nnet->tmp_gradient[n], nnodes[n + 1], nnodes[n]);
+    attach_smatrix(&nnet->tmp_gradient[n], ptr);
   }
 }
 
 void free_neunet(struct NeuNet *nnet)
 {
-  int i, j, n;
+  unsigned long n, i;
+  
   for (n = 0; n < nnet->nlayers; n++) {
+    free_smatrix(&nnet->layers[n]);
     if (n != 0) {
-      for (i = 0; i < nnet->layers[n]->nrows; i++) {
-	free(nnet->layers[n]->data[i]);
-      }
-    }
-    free(nnet->layers[n]->data);
-    free(nnet->layers[n]);
-  }
-  free(nnet->layers);
-
-  for (n = 0; n < nnet->nweights; n++) {
-    for (i = 0; i < nnet->weights[n]->nrows; i++) {
-      free(nnet->weights[n]->data[i]);
+      free(nnet->layers[n].ptr);
     }
     
-    free(nnet->weights[n]->data);
-    free(nnet->weights[n]);
+    if (n < nnet->nlayers - 1) {
+      free_smatrix(&nnet->deltas[n]);
+      free(nnet->deltas[n].ptr);
+
+      free_smatrix(&nnet->bias_deltas[n]);
+      free(nnet->bias_deltas[n].ptr);
+      
+      free_smatrix(&nnet->weights[n]);
+      free_smatrix(&nnet->gradient[n]);
+      free_smatrix(&nnet->tmp_gradient[n]);
+      
+      free(nnet->weights[n].ptr);
+      free(nnet->gradient[n].ptr);
+      free(nnet->tmp_gradient[n].ptr);
+    }
   }
+  free_smatrix(&nnet->output);
+
+  free(nnet->deltas);
+  free(nnet->bias_deltas);
+  free(nnet->layers);
   free(nnet->weights);
+  free(nnet->gradient);
+  free(nnet->tmp_gradient);
 }
 
 

@@ -11,14 +11,26 @@
 #endif
 
 struct NeuNet {
-  int nobs;
-  int nlayers;
-  int nweights;
-  struct ShadowMatrix **layers;
-  struct ShadowMatrix **weights;
+  unsigned long nobs;
+  unsigned long nlayers;
+  unsigned long nweights;
+  unsigned long nbatches;
+  double *bias_wts;
+  struct SMatrix output;
+  struct SMatrix *deltas;
+  struct SMatrix *bias_deltas;
+  struct SMatrix *gradient;
+  struct SMatrix *tmp_gradient;
+  struct SMatrix *layers;
+  struct SMatrix *weights;
 };
 
-extern void create_neunet(struct NeuNet *nnet, int *nnodes, int nlayers, int nobs, int nbatches);
+extern void create_neunet(struct NeuNet *nnet,
+			  unsigned long *nnodes,
+			  unsigned long nlayers,
+			  unsigned long nobs,
+			  unsigned long nbatches);
+
 extern void free_neunet(struct NeuNet *nnet);
 
 /*
@@ -54,6 +66,6 @@ struct TrainingData {
   unsigned long nobs;
   int ninputs;
   int noutputs;
-  struct lar_matrix inputs;
-  struct lar_matrix outputs;
+  //  struct lar_matrix inputs;
+  //struct lar_matrix outputs;
 };

@@ -13,10 +13,49 @@ Usage:
 
 	neunet <cmd> <arch> [OPTIONS] [<file>]
 
+where <cmd> can be 'learn' for training the weights and 'solve' for predicting new values using the trained weights. <arch> is a comma delimited set of integers specifying the size of the layers of the neural network. For example, '2,3,1' would indicate that there are 2 input value, 3 nodes in the first (and only) hidden layer and 1 output value. Bias nodes are added to all layers apart from the output layer so the example would contain 2+1, 3+1 and 1 nodes in each layer if the bias nodes were counted.
+
 Example:
 
 	neunet learn 784,30,10 mnist_norm_train.txt > mnist_train.wts
+
 	neunet solve 784,30,10 --weights=mnist_train.wts mnist_norm_test.txt > mnist_predict.txt
+
+Options:
+
+	--bsize=1
+		The batch size between weight updates.
+
+	--lambda=1.0
+		Regularization parameter (ignored when --reg=0).
+
+	--lrate=1.0
+		Learning rate for weight updates.
+
+	--nepochs=1
+		Number of epochs before the weights are output.
+
+	--reg=0
+		Boolean parameter indicating whether regularization should (1) or
+		should not (0) be performed.
+
+	--weights=rSQRT
+		Either a file containing weights to be used or if 'rSQRT' is given then
+		random weights are generated uniformally distributed between -1/sqrt(n)
+		and 1/sqrt(n), where n is the number input nodes into the layer. The
+		format of the weights file is one weight per line, in the order:
+		
+		       input_bias[0]
+		       input[0]hidden[0]
+		       input[0]hidden[1]
+		       .
+		       .
+		       hidden_bias[0]
+		       hidden[0]output[0]
+		       hidden[0]output[1]
+		       .
+		       .
+		       hidden[n]output[n]
 
 
 Installation
@@ -32,3 +71,4 @@ make install
 
 Admin permissions may be required for the final 'make install' step. The installation
 path may be changed with './configure --prefix=<path/to/dir>'
+

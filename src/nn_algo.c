@@ -6,18 +6,6 @@
 #include <nn_matrix.h>
 #include <nn_objects.h>
 
-#define sigmoid(x) (1 / (1 + exp(-x)))
-#define dsigmoid(x) (x * (1-x))
-
-#define tanh(x) ((exp(x) - exp(-x)) / (exp(x) + exp(-x)))
-// if a == tanh(x) then dtanh(a):
-#define dtanh(x) (1 - (x * x))
-
-#define ReLU(x) (x > 0 ? x : 0)
-#define dReLU(x) (x < 0 ? 0 : 1)
-
-#define lReLU(x) (x > 0.01 * x ? x : 0.01 * x)
-#define dlReLU(x) (x < 0 ? 0.01 : 1)
 /*
  *
  *      / nodes \
@@ -32,17 +20,20 @@
 void minibatch_feed_forward(struct NeuNet *nnet)
 {
   unsigned long i, j, l;
+  double (*pact) (double x);
   struct SMatrix *A, *W, *X;
   
   for (l = 0; l < nnet->nlayers - 1; l++) {
     A = &nnet->layers[l + 1];
     W = &nnet->weights[l];
     X = &nnet->layers[l];
+    pact = nnet->acts[l];
     
     smatrix_multiply(A, X, W);
     for (i = 0; i < A->nrows; i++) {
       for (j = 0; j < A->ncols; j++) {
-	A->data[i][j] = sigmoid(A->data[i][j] + nnet->bias_wts[l]);
+	//A->data[i][j] = sigmoid(A->data[i][j] + nnet->bias_wts[l]);
+	A->data[i][j] = pact(A->data[i][j] + nnet->bias_wts[l]);
       }
     }
   }
@@ -72,6 +63,8 @@ void minibatch_back_propagation(struct NeuNet *nnet)
   struct SMatrix *A, *AA;
   struct SMatrix *d, *db, *dplus;
 
+  double (*dpact) (double x);
+
   m = nnet->nbatches;
   nlayers = nnet->nlayers;
   olayer = nlayers - 1;
@@ -85,6 +78,7 @@ void minibatch_back_propagation(struct NeuNet *nnet)
     db = &nnet->bias_deltas[l - 1];
     D = &nnet->gradient[l - 1];
     dplus = &nnet->deltas[l];
+    dpact = nnet->dacts[l - 1];
 
     if (l == olayer) {      
       for (i = 0; i < AA->nrows; i++) {
@@ -96,7 +90,8 @@ void minibatch_back_propagation(struct NeuNet *nnet)
       smatrix_multiply(d, W, dplus);
       for (i = 0; i < d->nrows; i++) {
 	for (j = 0; j < d->ncols; j++) {
-	  d->data[i][j] = d->data[i][j] * dsigmoid(AA->data[j][i]);	  
+	  //	  d->data[i][j] = d->data[i][j] * dsigmoid(AA->data[j][i]);
+	  d->data[i][j] = d->data[i][j] * dpact(AA->data[j][i]);
 	}
       }
     }

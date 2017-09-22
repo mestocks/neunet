@@ -63,6 +63,8 @@ void create_neunet(struct NeuNet *nnet,
     create_smatrix(&nnet->gradient[n], nnodes[n + 1], nnodes[n]);
     attach_smatrix(&nnet->gradient[n], ptr);
   }
+  nnet->acts = calloc(nlayers - 1, sizeof *nnet->acts);
+  nnet->dacts = calloc(nlayers - 1, sizeof *nnet->dacts);
 }
 
 void free_neunet(struct NeuNet *nnet)
@@ -98,4 +100,7 @@ void free_neunet(struct NeuNet *nnet)
   free(nnet->layers);
   free(nnet->weights);
   free(nnet->gradient);
+
+  free(nnet->acts);
+  free(nnet->dacts);
 }

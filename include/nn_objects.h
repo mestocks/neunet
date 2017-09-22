@@ -20,6 +20,9 @@ struct NeuNet {
   struct SMatrix *tmp_gradient;
   struct SMatrix *layers;
   struct SMatrix *weights;
+
+  double (**acts) (double);
+  double (**dacts) (double);
 };
 
 extern void create_neunet(struct NeuNet *nnet,

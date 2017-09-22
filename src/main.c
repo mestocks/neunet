@@ -13,7 +13,7 @@
 #include <nn_metrics.h>
 #include <nn_string.h>
 
-#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 [file]"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid [file]"
 
 #define MAX_WTS_RSIZE 5120
 
@@ -198,13 +198,53 @@ int main(int argc, char **argv)
     nnodes[n] = atoi(net_array[n]);
   }
   free(net_array);
-  
+
+  char *act;
+  char *acts;
   char delim = ' ';
+  char **act_array;
+  unsigned long nacts;
+  double (*pact) (double x);
+  double (*dpact) (double x);
   unsigned long bsize;
   struct NeuNet neunet;
 
   bsize = strtoul(nn_lookup_hash(Pmers->arghash, "bsize"), &e, base);
   create_neunet(&neunet, nnodes, nlayers, bsize);
+
+  // add activation functions to nnet struct
+  acts = nn_lookup_hash(Pmers->arghash, "activation");
+  nacts = nn_nchar(acts, ",") + 1;
+  act_array = calloc(nacts, sizeof *act_array);
+  nn_str2array(act_array, acts, nacts, ",");
+
+  for (n = 0; n < nlayers - 1; n++) {
+    
+    if (nacts == 1) {
+      act = act_array[0];
+    } else {
+      act = act_array[n];
+    }
+
+    if (strcmp(act, "sigmoid") == 0) {
+      pact = nn_sigmoid;
+      dpact = nn_dsigmoid;
+    } else if (strcmp(act, "tanh") == 0) {
+      pact = nn_tanh;
+      dpact = nn_dtanh;
+    } else if (strcmp(act, "ReLU") == 0) {
+      pact = nn_ReLU;
+      dpact = nn_dReLU;
+    } else if (strcmp(act, "lReLU") == 0) {
+      pact = nn_lReLU;
+      dpact = nn_dlReLU;
+    }
+    
+    neunet.acts[n] = pact;
+    neunet.dacts[n] = dpact;
+  }
+  free(act_array);
+  
   load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &neunet);
 
   if (strcmp(Pmers->cmd, "solve") == 0) {

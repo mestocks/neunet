@@ -139,6 +139,9 @@ void minibatch_update_weights(struct NeuNet *nnet,
       for (i = 0; i < W->nrows; i++) {
 	for (j = 0; j < W->ncols; j++) {
 	  // is this correct?
+	  // For L2 regularization should be:
+	  // dW = dW + ((lamda / m) * W)
+	  // W = W - (alpha * dW)
 	  W->data[i][j] = W->data[i][j] - (lrate * (D->data[j][i] + ((lambda / m) * W->data[i][j])));
 	}
       }

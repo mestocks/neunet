@@ -1,0 +1,54 @@
+.TH neunet-solve 1
+
+.SH NAME
+neunet-solve \- Predict output values from input data given a set of pre-trained weights.
+
+.SH SYNOPSIS
+.PP
+.B neunet
+.RI solve
+.RI < arch >
+.RI [ OPTIONS ]
+.RI [ FILE ]
+
+.SH OPTIONS
+.TP
+.BR \-\-activation=\fISTR\fR
+Activation function to be applied to each node in each layer. Can be either a single string (e.g. "sigmoid") that is applied across all layers, or a comma separated list of functions giving the activation for each layer (e.g. "tanh,tanh,sigmoid"). The number of functions specified must either be equal to 1 or to the number of layers (i.e. the number of hidden layers + 1). Defaults to "sigmoid".
+.TP
+.BR \-\-bsize=\fIINT\fR
+Batch size between updates. Defaults to 1.
+.TP
+.BR \-\-weights=\fIFILE\fR
+Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The format of the weights file is one weight per line. Defaults to "rSQRT".
+
+.SH INPUT
+.PP
+The input format is in the form of a observation x feature matrix. That is the rows of the input should represent training observations and each column (separated by a space) represents different features of the dataset. So for a dataset with 5 observations and 3 features the input data would be represented as:
+.PP
+.nf
+.RS
+0 1 1
+0 1 0
+0 0 1
+1 0 0
+1 1 1
+.RE
+.fi
+
+.SH OUTPUT
+.PP
+neunet solve outputs the same input values plus columns appended giving the predicted values for each output node.
+
+.SH EXAMPLE
+Predict new values:
+.PP
+.nf
+.RS
+neunet solve 784,30,10 --weights=mnist.wts mnist_test.txt > mnist.txt
+.RE
+.fi
+
+.SH AUTHORS
+Michael Stocks <mestocks@protonmail.com>
+

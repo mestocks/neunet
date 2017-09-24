@@ -1,0 +1,78 @@
+.TH neunet-learn 1
+
+.SH NAME
+neunet-learn \- Learn the weights of a neural network from a training dataset.
+
+.SH SYNOPSIS
+.PP
+.B neunet
+.RI learn
+.RI < arch >
+.RI [ OPTIONS ]
+.RI [ FILE ]
+
+.SH OPTIONS
+.TP
+.BR \-\-activation=\fISTR\fR
+Activation function to be applied to each node in each layer. Can be either a single string (e.g. "sigmoid") that is applied across all layers, or a comma separated list of functions giving the activation for each layer (e.g. "tanh,tanh,sigmoid"). The number of functions specified must either be equal to 1 or to the number of layers (i.e. the number of hidden layers + 1). Defaults to "sigmoid".
+.TP
+.BR \-\-bsize=\fIINT\fR
+Batch size between updates. Defaults to 1.
+.TP
+.BR \-\-lambda=\fIFLOAT\fR
+Regularization parameter (ignored when \-\-reg=0). Defaults to 1.0.
+.TP
+.BR \-\-lrate=\fIFLOAT\fR
+Learning rate for weight updates. Defaults to 1.0
+.TP
+.BR \-\-reg=\fIBOOL\fR
+Boolean parameter indicating whether regularization should (1) or should not (0) be performed. Defaults to 0.
+.TP
+.BR \-\-weights=\fIFILE\fR
+Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The format of the weights file is one weight per line. Defaults to "rSQRT".
+
+.SH INPUT
+.PP
+The input format is in the form of a observation x feature matrix. That is the rows of the input should represent training observations and each column (separated by a space) represents different features of the dataset. The final columns of the input give the correct output. So for a dataset with 5 observations, 3 features and 1 output node the input data would be represented as:
+.PP
+.nf
+.RS
+0 1 1 1
+0 1 0 0
+0 0 1 0
+1 0 0 1
+1 1 1 1
+.RE
+.fi
+
+.SH OUTPUT
+.PP
+neunet learn outputs the trained weights to stdout in the form of one weight per line in the order:
+.PP
+.nf
+.RS
+0.43  <- bias weight; layer 0
+0.23  <- weight[0][0]; layer 0
+0.59  <- weight[0][1]; layer 0
+0.25  <- weight[1][0]; layer 0
+0.23  <- weight[1][1]; layer 0
+0.78  <- bias weight; layer 1
+0.01  <- weight[0][0]; layer 1
+0.12  <- weight[1][0]; layer 1
+.RE
+.fi
+.PP
+where weight[i][j] would refer to the ith node of layer[l] and the jth node of layer[l + 1]. The epoch number and the squared error is output to stderr.
+
+.SH EXAMPLES
+Learn weights:
+.PP
+.nf
+.RS
+neunet learn 784,30,10 mnist_train.txt > mnist.wts
+.RE
+.fi
+
+.SH AUTHORS
+Michael Stocks <mestocks@protonmail.com>
+

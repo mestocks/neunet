@@ -17,33 +17,13 @@ neunet \- Neural Network Implementation
 .PP
 Neural Network implementation with regularization, mini-batch gradient descent and an arbitrary number of layers. <\fIcommand\fR> can be "learn" for training the weights of a neural network or "solve" for predicting new values using the trained weights. <\fIarch\fR> is a comma separated list of integers indicating the architecture of the neural network. For example, "10,5,5,1" would use a network consisting of 10 input nodes, 5 nodes in the first and second hidden layers, and 1 output node.
 
-.SH OPTIONS
-.TP
-.BR \-\-activation=\fISTR\fR
-Activation function to be applied to each node in each layer. Can be either a single string (e.g. "sigmoid") that is applied across all layers, or a comma separated list of functions giving the activation for each layer (e.g. "tanh,tanh,sigmoid"). The number of functions specified must either be equal to 1 or to the number of layers (i.e. the number of hidden layers + 1). Defaults to "sigmoid".
-.TP
-.BR \-\-bsize=\fIINT\fR
-Batch size between updates. Defaults to 1.
-.TP
-.BR \-\-lambda=\fIFLOAT\fR
-Regularization parameter (ignored when \-\-reg=0). Defaults to 1.0.
-.TP
-.BR \-\-lrate=\fIFLOAT\fR
-Learning rate for weight updates. Defaults to 1.0
-.TP
-.BR \-\-reg=\fIBOOL\fR
-Boolean parameter indicating whether regularization should (1) or should not (0) be performed. Defaults to 0.
-.TP
-.BR \-\-weights=\fIFILE\fR
-Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The format of the weights file is one weight per line. Defaults to "rSQRT".
-
 .SH COMMANDS
 .TP
 .BR neunet-learn (1)
-Learn weights
+Learn the weights of a neural network from a training dataset.
 .TP
 .BR neunet-solve (1)
-Predict values
+Predict output values from input data given a set of pre-trained weights.
 
 .SH EXAMPLES
 Learn weights:

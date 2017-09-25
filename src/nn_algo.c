@@ -42,7 +42,8 @@ void minibatch_feed_forward(struct NeuNet *nnet)
     smatrix_multiply(A, X, W);
     for (i = 0; i < A->nrows; i++) {
       for (j = 0; j < A->ncols; j++) {
-	A->data[i][j] = sigmoid(A->data[i][j] + nnet->bias_wts[l]);
+	A->data[i][j] = A->data[i][j] + nnet->bias_wts[l];
+	A->data[i][j] = sigmoid(A->data[i][j]);
       }
     }
   }

@@ -144,6 +144,7 @@ void nn_solve(FILE *fp, struct NeuNet *nnet)
     for (i = 0; i < nnet->ninputs; i++) {
       inputs[i] = atof(array[i]);
     }
+    
     nnet->layers[0].data[0] = inputs;
     minibatch_feed_forward(nnet);
     

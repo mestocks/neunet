@@ -13,7 +13,7 @@
 #include <nn_metrics.h>
 #include <nn_string.h>
 
-#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid [file]"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd [file]"
 
 #define MAX_WTS_RSIZE 5120
 
@@ -79,6 +79,7 @@ void load_weights(char *fname, struct NeuNet *nnet)
 void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outputs, struct nnArgStore *Pmers)
 {
   char *e;
+  char *index;
   int base;
   int reg;
   //unsigned long bsize;
@@ -93,6 +94,7 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
   nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, base);
   lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
   lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
+  index = nn_lookup_hash(Pmers->arghash, "input-index");
 
   int rnum;
   unsigned long i, j;
@@ -114,7 +116,11 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
   while (1) {
 
     for (i = 0; i < nnet->nbatches; i++) {
-      rnum = r_urange(0, nobs);
+      if (strcmp(index, "rnd") == 0) {
+	rnum = r_urange(0, nobs);
+      } else {
+	rnum = i;
+      }
       nnet->layers[0].data[i] = inputs->data[rnum];
       nnet->output.data[i] = outputs->data[rnum];
     }

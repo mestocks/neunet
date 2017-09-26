@@ -115,8 +115,8 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
 
     for (i = 0; i < nnet->nbatches; i++) {
       rnum = r_urange(0, nobs);
-      nnet->layers[0].data[i] = inputs->data[i];
-      nnet->output.data[i] = outputs->data[i];
+      nnet->layers[0].data[i] = inputs->data[rnum];
+      nnet->output.data[i] = outputs->data[rnum];
     }
     minibatch_feed_forward(nnet);
     minibatch_back_propagation(nnet);

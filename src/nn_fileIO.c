@@ -10,7 +10,7 @@
 
 void nn_wts_from_file(struct NeuNet *nnet, char *fname)
 {
-  int b, i, j, l;
+  unsigned long b, i, j, l;
   FILE *fp;
   char **array;
   char delim = ' ';
@@ -23,8 +23,9 @@ void nn_wts_from_file(struct NeuNet *nnet, char *fname)
   array = calloc(1, sizeof (char*));
   while (fgets(buffer, sizeof(buffer), fp)) {
     nn_str2array(array, buffer, 1, &delim);
-    if (b == 0) {
-      nnet->bias_wts[l] = atof(array[0]);
+    if (b < nnet->bias_wts[l].ncols) {
+      //nnet->bias_wts[l] = atof(array[0]);
+      nnet->bias_wts[l].data[0][b] = atof(array[0]);
       b++;
     } else {
       nnet->weights[l].data[i][j] = atof(array[0]);

@@ -20,10 +20,10 @@ void create_neunet(struct NeuNet *nnet,
   nnet->ninputs = nnodes[0];
   nnet->noutputs = nnodes[nlayers - 1];
   
-  nnet->bias_wts = calloc(nlayers - 1, sizeof *nnet->bias_wts);
+  //nnet->bias_wts = calloc(nlayers - 1, sizeof *nnet->bias_wts);
   nnet->layers = calloc(nlayers, sizeof *nnet->layers);
   nnet->deltas = calloc(nlayers - 1, sizeof *nnet->deltas);
-  nnet->bias_deltas = calloc(nlayers - 1, sizeof *nnet->deltas);
+  nnet->bias_deltas = calloc(nlayers - 1, sizeof *nnet->bias_deltas);
   
   // Input & output layer - do not allocate double array
   n = 0;
@@ -41,11 +41,13 @@ void create_neunet(struct NeuNet *nnet,
     create_smatrix(&nnet->deltas[n - 1], nnodes[n], nbatches);
     attach_smatrix(&nnet->deltas[n - 1], ptr);
 
-    ptr = calloc(nbatches, sizeof *ptr);
-    create_smatrix(&nnet->bias_deltas[n - 1], nbatches, 1);
+    ptr = calloc(nnodes[n], sizeof *ptr);
+    create_smatrix(&nnet->bias_deltas[n - 1], nnodes[n], 1);
     attach_smatrix(&nnet->bias_deltas[n - 1], ptr);
+    
   }
-  
+
+  nnet->bias_wts = calloc(nlayers - 1, sizeof *nnet->bias_wts);
   nnet->weights = calloc(nnet->nweights, sizeof *nnet->weights);
   nnet->gradient = calloc(nnet->nweights, sizeof *nnet->gradient);
   
@@ -62,6 +64,11 @@ void create_neunet(struct NeuNet *nnet,
     ptr = calloc(size, sizeof *ptr);
     create_smatrix(&nnet->gradient[n], nnodes[n + 1], nnodes[n]);
     attach_smatrix(&nnet->gradient[n], ptr);
+
+    // bias weights
+    ptr = calloc(nnodes[n + 1], sizeof *ptr);
+    create_smatrix(&nnet->bias_wts[n], 1, nnodes[n + 1]);
+    attach_smatrix(&nnet->bias_wts[n], ptr);
   }
   nnet->acts = calloc(nlayers - 1, sizeof *nnet->acts);
   nnet->dacts = calloc(nlayers - 1, sizeof *nnet->dacts);
@@ -90,6 +97,9 @@ void free_neunet(struct NeuNet *nnet)
       
       free_smatrix(&nnet->gradient[n]);
       free(nnet->gradient[n].ptr);
+
+      free_smatrix(&nnet->bias_wts[n]);
+      free(nnet->bias_wts[n].ptr);
     }
   }
   free_smatrix(&nnet->output);

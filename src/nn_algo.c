@@ -32,7 +32,7 @@ void minibatch_feed_forward(struct NeuNet *nnet)
     smatrix_multiply(A, X, W);
     for (i = 0; i < A->nrows; i++) {
       for (j = 0; j < A->ncols; j++) {
-	A->data[i][j] = A->data[i][j] + nnet->bias_wts[l];
+	A->data[i][j] = A->data[i][j] + nnet->bias_wts[l].data[0][j];
 	A->data[i][j] = pact(A->data[i][j]);
       }
     }
@@ -70,7 +70,6 @@ void minibatch_back_propagation(struct NeuNet *nnet)
   olayer = nlayers - 1;
 
   for (l = olayer; l > 0; l--) {
-
     A = &nnet->layers[l - 1];
     AA = &nnet->layers[l];
     d = &nnet->deltas[l - 1];
@@ -87,10 +86,10 @@ void minibatch_back_propagation(struct NeuNet *nnet)
 	}
       }
     } else {
+      // dZ1 = np.dot(dZ2, W2.T) * dsigmoid(A1)
       smatrix_multiply(d, W, dplus);
       for (i = 0; i < d->nrows; i++) {
 	for (j = 0; j < d->ncols; j++) {
-	  //	  d->data[i][j] = d->data[i][j] * dsigmoid(AA->data[j][i]);
 	  d->data[i][j] = d->data[i][j] * dpact(AA->data[j][i]);
 	}
       }
@@ -102,10 +101,9 @@ void minibatch_back_propagation(struct NeuNet *nnet)
 	D->data[i][j] = D->data[i][j] / m;
       }
     }
-    
-    for (i = 0; i < d->ncols; i++) {
-      for (j = 0; j < d->nrows; j++) {
-	db->data[i][0] += d->data[j][i];
+    for (i = 0; i < d->nrows; i++) {
+      for (j = 0; j < d->ncols; j++) {
+	db->data[i][0] = db->data[i][0] + d->data[i][j];
       }
       db->data[i][0] = db->data[i][0] / m;
     }
@@ -122,11 +120,13 @@ void minibatch_update_weights(struct NeuNet *nnet,
   struct SMatrix *db;
   struct SMatrix *D;
   struct SMatrix *W;
+  struct SMatrix *B;
 
   nlayers = nnet->nlayers;
   for (l = 0; l < nlayers - 1; l++) {
     D = &nnet->gradient[l];
     W = &nnet->weights[l];
+    B = &nnet->bias_wts[l];
     db = &nnet->bias_deltas[l];
     
     if (reg == 0) {
@@ -144,6 +144,12 @@ void minibatch_update_weights(struct NeuNet *nnet,
 	  // W = W - (alpha * dW)
 	  W->data[i][j] = W->data[i][j] - (lrate * (D->data[j][i] + ((lambda / m) * W->data[i][j])));
 	}
+      }
+    }
+    
+    for (i = 0; i < B->nrows; i++) {
+      for (j = 0; j < B->ncols; j++) {
+	B->data[i][j] = B->data[i][j] - (lrate * db->data[j][i]);
       }
     }
     

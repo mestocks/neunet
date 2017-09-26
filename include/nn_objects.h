@@ -12,10 +12,11 @@ struct NeuNet {
   unsigned long nlayers;
   unsigned long nweights;
   unsigned long nbatches;
-  double *bias_wts;
+  //double *bias_wts;
   struct SMatrix output;
   struct SMatrix *deltas;
   struct SMatrix *bias_deltas;
+  struct SMatrix *bias_wts;
   struct SMatrix *gradient;
   struct SMatrix *tmp_gradient;
   struct SMatrix *layers;

@@ -31,7 +31,13 @@ void print_weights(struct NeuNet *nnet)
   unsigned long l, i, j;
   
   for (l = 0; l < nnet->nweights; l++) {
-    printf("%f\n", nnet->bias_wts[l]);
+    //printf("%f\n", nnet->bias_wts[l]);
+    for (i = 0; i < nnet->bias_wts[l].nrows; i++) {
+      for (j = 0; j < nnet->bias_wts[l].ncols; j++) {
+	printf("%f\n", nnet->bias_wts[l].data[i][j]);
+      }
+    }
+    
     for (i = 0; i < nnet->weights[l].nrows; i++) {
       for (j = 0; j < nnet->weights[l].ncols; j++) {
 	printf("%f\n", nnet->weights[l].data[i][j]);
@@ -43,7 +49,7 @@ void print_weights(struct NeuNet *nnet)
 
 void load_weights(char *fname, struct NeuNet *nnet)
 {
-  int i, j, l;
+  unsigned long i, j, l;
   
   if (strcmp(fname, "rSQRT") == 0) {
     srand(time(NULL));
@@ -57,7 +63,12 @@ void load_weights(char *fname, struct NeuNet *nnet)
 	  nnet->weights[l].data[i][j] = r_urange(min, max);
 	}
       }
-      nnet->bias_wts[l] = r_urange(min, max);
+      for (i = 0; i < nnet->bias_wts[l].nrows; i++) {
+	for (j = 0; j < nnet->bias_wts[l].ncols; j++) {
+	  nnet->bias_wts[l].data[i][j] = 0.0;
+	}
+      }
+      //nnet->bias_wts[l] = r_urange(min, max);
     }
   } else {
     nn_wts_from_file(nnet, fname);
@@ -104,8 +115,8 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
 
     for (i = 0; i < nnet->nbatches; i++) {
       rnum = r_urange(0, nobs);
-      nnet->layers[0].data[i] = inputs->data[rnum];
-      nnet->output.data[i] = outputs->data[rnum];
+      nnet->layers[0].data[i] = inputs->data[i];
+      nnet->output.data[i] = outputs->data[i];
     }
     minibatch_feed_forward(nnet);
     minibatch_back_propagation(nnet);
@@ -113,7 +124,7 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
     // rather than the number of batches (even though this doesn't make
     // much sense)
     minibatch_update_weights(nnet, nobs, lambda, reg, lrate);
-    
+        
     error = nn_error(nnet, inputs, outputs);
     epoch_num++;
     fprintf(stderr, "%lu %f\n", epoch_num, error);
@@ -207,7 +218,7 @@ int main(int argc, char **argv)
   bsize = strtoul(nn_lookup_hash(Pmers->arghash, "bsize"), &e, base);
   create_neunet(&neunet, nnodes, nlayers, bsize);
   load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &neunet);
-
+  
   if (strcmp(Pmers->cmd, "solve") == 0) {
     
     nn_solve(Pmers->fp, &neunet);

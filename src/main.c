@@ -15,8 +15,6 @@
 
 #define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd [file]"
 
-#define MAX_WTS_RSIZE 5120
-
 double r_urange(double min, double max)
 {
   double range, div;
@@ -31,7 +29,6 @@ void print_weights(struct NeuNet *nnet)
   unsigned long l, i, j;
   
   for (l = 0; l < nnet->nweights; l++) {
-    //printf("%f\n", nnet->bias_wts[l]);
     for (i = 0; i < nnet->bias_wts[l].nrows; i++) {
       for (j = 0; j < nnet->bias_wts[l].ncols; j++) {
 	printf("%f\n", nnet->bias_wts[l].data[i][j]);
@@ -68,7 +65,6 @@ void load_weights(char *fname, struct NeuNet *nnet)
 	  nnet->bias_wts[l].data[i][j] = 0.0;
 	}
       }
-      //nnet->bias_wts[l] = r_urange(min, max);
     }
   } else {
     nn_wts_from_file(nnet, fname);
@@ -82,7 +78,6 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
   char *index;
   int base;
   int reg;
-  //unsigned long bsize;
   unsigned long nepochs;
   double lrate;
   double lambda;
@@ -90,7 +85,6 @@ void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outpu
   base = 10;
   
   reg = atoi(nn_lookup_hash(Pmers->arghash, "reg"));
-  //bsize = atoi(nn_lookup_hash(Pmers->arghash, "bsize"));
   nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, base);
   lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
   lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
@@ -180,7 +174,6 @@ void nn_solve(FILE *fp, struct NeuNet *nnet)
 
 int main(int argc, char **argv)
 {
-  int i;
   char *e;
   int base;
   char **defv;

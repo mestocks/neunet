@@ -7,20 +7,17 @@
 void create_neunet(struct NeuNet *nnet,
 		   unsigned long *nnodes,
 		   unsigned long nlayers,
-		   //		   unsigned long nobs,
 		   unsigned long nbatches)
 {
   double *ptr;
   unsigned long n, size;
   
-  //  nnet->nobs = nobs;
   nnet->nlayers = nlayers;
   nnet->nbatches = nbatches;
   nnet->nweights = nlayers - 1;
   nnet->ninputs = nnodes[0];
   nnet->noutputs = nnodes[nlayers - 1];
   
-  //nnet->bias_wts = calloc(nlayers - 1, sizeof *nnet->bias_wts);
   nnet->layers = calloc(nlayers, sizeof *nnet->layers);
   nnet->deltas = calloc(nlayers - 1, sizeof *nnet->deltas);
   nnet->bias_deltas = calloc(nlayers - 1, sizeof *nnet->bias_deltas);

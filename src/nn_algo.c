@@ -86,7 +86,6 @@ void minibatch_back_propagation(struct NeuNet *nnet)
 	}
       }
     } else {
-      // dZ1 = np.dot(dZ2, W2.T) * dsigmoid(A1)
       smatrix_multiply(d, W, dplus);
       for (i = 0; i < d->nrows; i++) {
 	for (j = 0; j < d->ncols; j++) {

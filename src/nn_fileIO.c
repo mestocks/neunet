@@ -24,7 +24,6 @@ void nn_wts_from_file(struct NeuNet *nnet, char *fname)
   while (fgets(buffer, sizeof(buffer), fp)) {
     nn_str2array(array, buffer, 1, &delim);
     if (b < nnet->bias_wts[l].ncols) {
-      //nnet->bias_wts[l] = atof(array[0]);
       nnet->bias_wts[l].data[0][b] = atof(array[0]);
       b++;
     } else {

@@ -1,7 +1,7 @@
 .TH neunet-solve 1
 
 .SH NAME
-neunet-solve \- Predict output values from input data given a set of pre-trained weights.
+neunet-solve \- Predict output values from input data, given a set of pre-trained weights.
 
 .SH SYNOPSIS
 .PP
@@ -20,7 +20,7 @@ Activation function to be applied to each node in each layer. Can be either a si
 Batch size between updates. Defaults to 1.
 .TP
 .BR \-\-weights=\fIFILE\fR
-Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The format of the weights file is one weight per line. Defaults to "rSQRT".
+Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The bias weights are initialised to zero. The format of the weights file is one weight per line (see OUTPUT below). Defaults to "rSQRT".
 
 .SH INPUT
 .PP
@@ -38,7 +38,7 @@ The input format is in the form of a observation x feature matrix. That is the r
 
 .SH OUTPUT
 .PP
-neunet solve outputs the same input values plus columns appended giving the predicted values for each output node.
+neunet solve outputs the predicted values for each output node.
 
 .SH EXAMPLE
 Predict new values:

@@ -29,6 +29,14 @@ Example:
 
 Options:
 
+	--activation=sigmoid
+		Activation function to be applied to each node in each layer. Can be
+		either a single string (e.g. "sigmoid") that is applied across all
+		layers, or a comma separated list of functions giving the activation
+		for each layer (e.g. "tanh,tanh,sigmoid"). The number of functions
+		specified must either be equal to 1 or to the number of layers (i.e.
+		the number of hidden layers + 1).
+		
 	--bsize=1
 		The batch size between weight updates.
 
@@ -48,15 +56,18 @@ Options:
 	--weights=rSQRT
 		Either a file containing weights to be used or if 'rSQRT' is given then
 		random weights are generated uniformally distributed between -1/sqrt(n)
-		and 1/sqrt(n), where n is the number input nodes into the layer. The
-		format of the weights file is one weight per line, in the order:
+		and 1/sqrt(n), where n is the number input nodes into the layer. Bias
+		weights are initialized to zero. The format of the weights file is one
+		weight per line, in the order:
 		
 		       input_bias[0]
+		       input_bias[1]
 		       input[0]hidden[0]
 		       input[0]hidden[1]
 		       .
 		       .
 		       hidden_bias[0]
+		       hidden_bias[1]
 		       hidden[0]output[0]
 		       hidden[0]output[1]
 		       .

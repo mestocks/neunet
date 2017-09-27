@@ -29,11 +29,11 @@ Learning rate for weight updates. Defaults to 1.0
 Boolean parameter indicating whether regularization should (1) or should not (0) be performed. Defaults to 0.
 .TP
 .BR \-\-weights=\fIFILE\fR
-Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The format of the weights file is one weight per line. Defaults to "rSQRT".
+Either a file containing weights to be used or if "rSQRT" is given then random weights are generated uniformally distributed between -1/sqrt(n) and 1/sqrt(n), where n is the number of input nodes into the layer. The bias weights are initialised to zero. The format of the weights file is one weight per line (see OUTPUT below). Defaults to "rSQRT".
 
 .SH INPUT
 .PP
-The input format is in the form of a observation x feature matrix. That is the rows of the input should represent training observations and each column (separated by a space) represents different features of the dataset. The final columns of the input give the correct output. So for a dataset with 5 observations, 3 features and 1 output node the input data would be represented as:
+The input format is in the form of an observation x feature matrix. That is the rows of the input should represent training observations and each column (separated by a space) represents different features of the dataset. The final columns of the input give the correct output. So for a dataset with 5 observations, 3 features and 1 output node the input data would be represented as:
 .PP
 .nf
 .RS
@@ -51,12 +51,14 @@ neunet learn outputs the trained weights to stdout in the form of one weight per
 .PP
 .nf
 .RS
-0.43  <- bias weight; layer 0
+0.43  <- bias weight[0]; layer 0
+0.33  <- bias weight[1]; layer 0
 0.23  <- weight[0][0]; layer 0
 0.59  <- weight[0][1]; layer 0
 0.25  <- weight[1][0]; layer 0
 0.23  <- weight[1][1]; layer 0
-0.78  <- bias weight; layer 1
+0.78  <- bias weight[0]; layer 1
+0.58  <- bias weight[1]; layer 1
 0.01  <- weight[0][0]; layer 1
 0.12  <- weight[1][0]; layer 1
 .RE

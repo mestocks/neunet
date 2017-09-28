@@ -39,18 +39,18 @@ static inline double nn_ReLU(double x)
 
 static inline double nn_dReLU(double x)
 {
-    return x < 0 ? 0 : 1;
+    return x <= 0 ? 0 : 1;
 }
 
 
 static inline double nn_lReLU(double x)
 {
-  return x > 0.01 * x ? x : 0.01 * x;
+  return x > 0 ? x : 0.01 * x;
 }
 
 static inline double nn_dlReLU(double x)
 {
-  return x < 0 ? 0.01 : 1;
+  return x <= 0 ? 0.01 : 1;
 }
 
 extern void minibatch_feed_forward(struct NeuNet *nnet);

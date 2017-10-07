@@ -15,6 +15,14 @@
 
 #define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd [file]"
 
+#define ARCH "Architecture:\n\tI,H1,...O\n\nComma-delimited string where I,Hn and O are the number of nodes in the input layer, \nnth hidden layer and the output layer respectively. For example, '20,10,1' would \nhave 20 inputs nodes, 10 nodes in the first hidden layer and 1 output node.\n"
+
+#define COMMANDS "Commands:\n\tlearn\tTrain a neural network\n\tsolve\tPredict new values using trained weights\n"
+
+#define USAGE "Usage:\n\tneunet <cmd> <arch> [OPTIONS] [FILE]\n"
+
+#define HELP "See 'man neunet' for details\n"
+
 double r_urange(double min, double max)
 {
   double range, div;
@@ -44,13 +52,13 @@ void print_weights(struct NeuNet *nnet)
 }
 
 
-void load_weights(char *fname, struct NeuNet *nnet)
+void load_weights(struct NeuNet *nnet, char *fname)
 {
   unsigned long i, j, l;
+  double min, max, scalar;
   
   if (strcmp(fname, "rSQRT") == 0) {
     srand(time(NULL));
-    double min, max, scalar;
     for (l = 0; l < nnet->nlayers - 1; l++) {
       scalar = sqrt(nnet->layers[l].nrows + 1);
       min = -1 / scalar;
@@ -72,29 +80,29 @@ void load_weights(char *fname, struct NeuNet *nnet)
 }
 
 
-void nn_learn(struct NeuNet *nnet, struct SMatrix *inputs, struct SMatrix *outputs, struct nnArgStore *Pmers)
+void nn_learn(struct NeuNet *nnet,
+	      struct SMatrix *inputs,
+	      struct SMatrix *outputs,
+	      struct nnArgStore *Pmers)
 {
+  int reg;
   char *e;
   char *index;
-  int base;
-  int reg;
-  unsigned long nepochs;
   double lrate;
   double lambda;
+  unsigned long nepochs;
 
-  base = 10;
-  
   reg = atoi(nn_lookup_hash(Pmers->arghash, "reg"));
-  nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, base);
   lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
-  lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
   index = nn_lookup_hash(Pmers->arghash, "input-index");
+  lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
+  nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, 10);
 
   int rnum;
-  unsigned long i, j;
-  unsigned long epoch_num;
   double cost;
   double error;
+  unsigned long i, j;
+  unsigned long epoch_num;
 
   cost = 0.0;
   error = 0.0;
@@ -174,15 +182,21 @@ void nn_solve(FILE *fp, struct NeuNet *nnet)
 
 int main(int argc, char **argv)
 {
+  if (argc == 1) {
+    printf("No command specified\n\n%s\n%s\n%s", USAGE, COMMANDS, HELP);
+    exit(1);
+  } else if (argc == 2) {
+    printf("Architecture unspecified\n\n%s\n%s\n%s", USAGE, ARCH, HELP);
+    exit(1);
+  }
+  
+  // Process command line args into hash
   char *e;
-  int base;
   char **defv;
   unsigned long defc;
   char defaults[1024];
   struct nnArgStore *Pmers;
 
-  base = 10;
-  
   sprintf(defaults, ARG_DEFS);
   defc = nn_nchar(defaults, " ") + 1;
   defv = calloc(defc, sizeof *defv);
@@ -194,69 +208,27 @@ int main(int argc, char **argv)
   
   nn_arg_parse(Pmers, (int)defc, defv);
   nn_arg_parse(Pmers, argc, argv);
-  
-  unsigned long n;
-  unsigned long nlayers;
-  unsigned long *nnodes;
-  char **net_array;
-  char net_delim = ',';
 
-  nlayers = (unsigned long)nn_nchar(Pmers->arch, &net_delim) + 1;
-  nnodes = calloc(nlayers, sizeof *nnodes);
-  net_array = calloc(nlayers, sizeof *net_array);
-  nn_str2array(net_array, Pmers->arch, nlayers, &net_delim);
-  for (n = 0; n < nlayers; n++) {
-    nnodes[n] = atoi(net_array[n]);
-  }
-  free(net_array);
-
-  char *act;
+  // Process architecture & setup neural network  
+  char *wts;
   char *acts;
-  char delim = ' ';
-  char **act_array;
-  unsigned long nacts;
-  double (*pact) (double x);
-  double (*dpact) (double x);
   unsigned long bsize;
   struct NeuNet neunet;
+  unsigned long nlayers;
+  unsigned long *nnodes;
 
-  bsize = strtoul(nn_lookup_hash(Pmers->arghash, "bsize"), &e, base);
-  create_neunet(&neunet, nnodes, nlayers, bsize);
-
-  // add activation functions to nnet struct
+  wts = nn_lookup_hash(Pmers->arghash, "weights");
   acts = nn_lookup_hash(Pmers->arghash, "activation");
-  nacts = nn_nchar(acts, ",") + 1;
-  act_array = calloc(nacts, sizeof *act_array);
-  nn_str2array(act_array, acts, nacts, ",");
+  nlayers = (unsigned long)nn_nchar(Pmers->arch, ",") + 1;
+  bsize = strtoul(nn_lookup_hash(Pmers->arghash, "bsize"), &e, 10);
 
-  for (n = 0; n < nlayers - 1; n++) {
-    
-    if (nacts == 1) {
-      act = act_array[0];
-    } else {
-      act = act_array[n];
-    }
-
-    if (strcmp(act, "sigmoid") == 0) {
-      pact = nn_sigmoid;
-      dpact = nn_dsigmoid;
-    } else if (strcmp(act, "tanh") == 0) {
-      pact = nn_tanh;
-      dpact = nn_dtanh;
-    } else if (strcmp(act, "ReLU") == 0) {
-      pact = nn_ReLU;
-      dpact = nn_dReLU;
-    } else if (strcmp(act, "lReLU") == 0) {
-      pact = nn_lReLU;
-      dpact = nn_dlReLU;
-    }
-    
-    neunet.acts[n] = pact;
-    neunet.dacts[n] = dpact;
-  }
-  free(act_array);
+  nnodes = calloc(nlayers, sizeof *nnodes);
+  nn_get_arch(nnodes, Pmers->arch, nlayers);
   
-  load_weights(nn_lookup_hash(Pmers->arghash, "weights"), &neunet);
+  create_neunet(&neunet, nnodes, nlayers, bsize);
+  nn_process_activation(&neunet, acts);
+  load_weights(&neunet, wts);
+
   
   if (strcmp(Pmers->cmd, "solve") == 0) {
     
@@ -266,7 +238,7 @@ int main(int argc, char **argv)
     
     struct InOutData iodata;
 
-    nn_file2array(&iodata, Pmers->fp, nnodes[0], nnodes[nlayers - 1], &delim);
+    nn_file2array(&iodata, Pmers->fp, nnodes[0], nnodes[nlayers - 1], " ");
     nn_learn(&neunet, &iodata.inputs, &iodata.outputs, Pmers);
 
     free_smatrix(&iodata.inputs);
@@ -275,7 +247,7 @@ int main(int argc, char **argv)
     free(iodata.output_data);
     
   } else {
-    printf("help\n");
+    printf("Command '%s' does not exist\n\n%s\n%s\n%s", Pmers->cmd, USAGE, COMMANDS, HELP);
   }
   
   free_neunet(&neunet);

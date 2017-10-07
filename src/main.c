@@ -13,7 +13,7 @@
 #include <nn_metrics.h>
 #include <nn_string.h>
 
-#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd [file]"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd --print-metrics=1 [file]"
 
 #define ARCH "Architecture:\n\tI,H1,...O\n\nComma-delimited string where I,Hn and O are the number of nodes in the input layer, \nnth hidden layer and the output layer respectively. For example, '20,10,1' would \nhave 20 inputs nodes, 10 nodes in the first hidden layer and 1 output node.\n"
 
@@ -91,12 +91,14 @@ void nn_learn(struct NeuNet *nnet,
   double lrate;
   double lambda;
   unsigned long nepochs;
+  unsigned long pmetrics;
 
   reg = atoi(nn_lookup_hash(Pmers->arghash, "reg"));
   lrate = atof(nn_lookup_hash(Pmers->arghash, "lrate"));
   index = nn_lookup_hash(Pmers->arghash, "input-index");
   lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
   nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, 10);
+  pmetrics = strtoul(nn_lookup_hash(Pmers->arghash, "print-metrics"), &e, 10);
 
   int rnum;
   double cost;
@@ -128,14 +130,20 @@ void nn_learn(struct NeuNet *nnet,
     }
     minibatch_feed_forward(nnet);
     minibatch_back_propagation(nnet);
+
+    // add expontially weighted averages here?
+    
     // nobs passed to update as I think that it should be lambda / nobs
     // rather than the number of batches (even though this doesn't make
     // much sense)
     minibatch_update_weights(nnet, nobs, lambda, reg, lrate);
-        
-    error = nn_error(nnet, inputs, outputs);
+
     epoch_num++;
-    fprintf(stderr, "%lu %f\n", epoch_num, error);
+
+    if (epoch_num % pmetrics == 0) {
+      error = nn_error(nnet, inputs, outputs);
+      fprintf(stderr, "%lu %f\n", epoch_num, error);
+    }
 
     if (epoch_num == nepochs) {
       print_weights(nnet);

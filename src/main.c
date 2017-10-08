@@ -13,7 +13,7 @@
 #include <nn_metrics.h>
 #include <nn_string.h>
 
-#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd --print-metrics=1 [file]"
+#define ARG_DEFS "neunet <cmd> <arch> --weights=rSQRT --nepochs=1 --bsize=1 --reg=0 --lambda=1.0 --lrate=1.0 --activation=sigmoid --input-index=rnd --metrics-every=1 [file]"
 
 #define ARCH "Architecture:\n\tI,H1,...O\n\nComma-delimited string where I,Hn and O are the number of nodes in the input layer, \nnth hidden layer and the output layer respectively. For example, '20,10,1' would \nhave 20 inputs nodes, 10 nodes in the first hidden layer and 1 output node.\n"
 
@@ -98,7 +98,7 @@ void nn_learn(struct NeuNet *nnet,
   index = nn_lookup_hash(Pmers->arghash, "input-index");
   lambda = atof(nn_lookup_hash(Pmers->arghash, "lambda"));
   nepochs = strtoul(nn_lookup_hash(Pmers->arghash, "nepochs"), &e, 10);
-  pmetrics = strtoul(nn_lookup_hash(Pmers->arghash, "print-metrics"), &e, 10);
+  pmetrics = strtoul(nn_lookup_hash(Pmers->arghash, "metrics-every"), &e, 10);
 
   int rnum;
   double cost;
@@ -193,7 +193,9 @@ int main(int argc, char **argv)
   if (argc == 1) {
     printf("No command specified\n\n%s\n%s\n%s", USAGE, COMMANDS, HELP);
     exit(1);
-  } else if (argc == 2) {
+  }
+
+  if (argc == 2) {
     printf("Architecture unspecified\n\n%s\n%s\n%s", USAGE, ARCH, HELP);
     exit(1);
   }
@@ -217,6 +219,16 @@ int main(int argc, char **argv)
   nn_arg_parse(Pmers, (int)defc, defv);
   nn_arg_parse(Pmers, argc, argv);
 
+  if (strcmp(Pmers->cmd, "init") == 0) {
+    nn_print_args(Pmers);
+    nn_free_hash(Pmers->arghash);
+    free(Pmers->arghash);
+    fclose(Pmers->fp);
+    free(Pmers);
+    free(defv);
+    exit(1);
+  }
+  
   // Process architecture & setup neural network  
   char *wts;
   char *acts;

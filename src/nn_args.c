@@ -55,16 +55,33 @@ void nn_get_arch(unsigned long *nnodes, char *arch, unsigned long nlayers)
 {
   unsigned long n;
   char **net_array;
+  char arch_cpy[1028];
   char net_delim = ',';
-  
+
+  strcpy(arch_cpy, arch);
   net_array = calloc(nlayers, sizeof *net_array);
-  nn_str2array(net_array, arch, nlayers, &net_delim);
+  nn_str2array(net_array, arch_cpy, nlayers, &net_delim);
   for (n = 0; n < nlayers; n++) {
     nnodes[n] = atoi(net_array[n]);
   }
   free(net_array);
 }
 
+
+void nn_print_args(struct nnArgStore *Pmers)
+{
+  unsigned long i;
+  struct nnHashNode *curr;
+
+  printf("arch %s\n", Pmers->arch);
+  for (i = 0; i < Pmers->arghash->size; i++) {
+    curr = Pmers->arghash->table[i];
+    while (curr != NULL) {
+      printf("%s %s\n", curr->key, curr->value);
+      curr = curr->next;
+    }
+  }
+}
 
 void nn_process_activation(struct NeuNet *nnet, char *acts)
 {

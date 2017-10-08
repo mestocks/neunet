@@ -6,6 +6,7 @@ struct nnArgStore {
   FILE *fp;
   char *cmd;
   char *arch;
+  char *ftype;
   struct nnHashTable *arghash;
 };
 

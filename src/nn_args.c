@@ -25,9 +25,11 @@ void nn_arg_parse(struct nnArgStore *Pmers, int argc, char **argv)
 
   if (access(argv[argc - 1], F_OK) != -1) {
     Pmers->fp = fopen(argv[argc - 1], "r");
+    strcpy(Pmers->ftype, argv[argc - 1]);
     argc_wo_fname = argc - 1;
   } else {
     Pmers->fp = stdin;
+    strcpy(Pmers->ftype, "stdin");
     argc_wo_fname = argc;
   }
   
@@ -74,6 +76,7 @@ void nn_print_args(struct nnArgStore *Pmers)
   struct nnHashNode *curr;
 
   printf("arch %s\n", Pmers->arch);
+  printf("ftype %s\n", Pmers->ftype);
   for (i = 0; i < Pmers->arghash->size; i++) {
     curr = Pmers->arghash->table[i];
     while (curr != NULL) {

@@ -214,6 +214,7 @@ int main(int argc, char **argv)
 
   Pmers = calloc(1, sizeof *Pmers);
   Pmers->arghash = calloc(1, sizeof *Pmers->arghash);
+  Pmers->ftype = calloc(1028, sizeof *Pmers->ftype);
   nn_create_hash(Pmers->arghash, 128);
   
   nn_arg_parse(Pmers, (int)defc, defv);
@@ -223,6 +224,7 @@ int main(int argc, char **argv)
     nn_print_args(Pmers);
     nn_free_hash(Pmers->arghash);
     free(Pmers->arghash);
+    free(Pmers->ftype);
     fclose(Pmers->fp);
     free(Pmers);
     free(defv);
@@ -275,6 +277,7 @@ int main(int argc, char **argv)
 
   nn_free_hash(Pmers->arghash);
   free(Pmers->arghash);
+  free(Pmers->ftype);
   fclose(Pmers->fp);
   free(Pmers);
   free(defv);
